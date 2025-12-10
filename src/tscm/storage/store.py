@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from sqlalchemy import desc, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
-from .models import Artifact, Base, Event, Sweep, create_engine_with_wal, init_db
+from .models import Artifact, Event, Sweep, create_engine_with_wal, init_db
 
 
 class SweepStore:

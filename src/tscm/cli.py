@@ -2,17 +2,16 @@
 
 import shutil
 import subprocess
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import typer
 from rich import print as rprint
 from rich.console import Console
 from rich.table import Table
 
-from tscm.config import TSCMConfig, load_config, save_example_config
+from tscm.config import load_config, save_example_config
 from tscm.storage.store import SweepStore
 
 app = typer.Typer(
@@ -229,7 +228,7 @@ def list_devices():
                 timeout=3,
             )
             if result.returncode == 0 and "Serial number" in result.stdout:
-                serial_line = [l for l in result.stdout.split("\n") if "Serial number" in l]
+                serial_line = [line for line in result.stdout.split("\n") if "Serial number" in line]
                 devices_found.append(("HackRF", "Detected", serial_line[0] if serial_line else ""))
         except Exception:
             pass
@@ -336,7 +335,7 @@ def sweep(
     # Initialize storage
     try:
         store = SweepStore(config.storage.database_path, config.storage.enable_wal)
-    except (OSError, IOError) as e:
+    except OSError as e:
         rprint(f"[red]Error initializing storage: {e}[/red]")
         raise typer.Exit(1)
 
@@ -390,11 +389,11 @@ def sweep(
 
         if success:
             store.update_sweep(sweep_db_id, end_time=datetime.now(timezone.utc), status="completed")
-            rprint(f"\n[green]✓ Sweep completed successfully[/green]")
+            rprint("\n[green]✓ Sweep completed successfully[/green]")
             rprint(f"Sweep ID: {sweep_id}")
         else:
             store.update_sweep(sweep_db_id, status="failed")
-            rprint(f"\n[yellow]⚠ Sweep completed with warnings[/yellow]")
+            rprint("\n[yellow]⚠ Sweep completed with warnings[/yellow]")
 
     except KeyboardInterrupt:
         rprint("\n[yellow]Sweep interrupted by user[/yellow]")

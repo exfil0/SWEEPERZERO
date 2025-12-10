@@ -1,7 +1,6 @@
 """Orchestrator for running multiple sweep types."""
 
 import concurrent.futures
-from pathlib import Path
 from typing import Dict, List
 
 from tscm.config import TSCMConfig

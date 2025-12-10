@@ -174,7 +174,7 @@ def load_config(config_path: Optional[Path] = None) -> TSCMConfig:
 
     # Load YAML if found
     if config_path and config_path.exists():
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             yaml_data = yaml.safe_load(f) or {}
 
     # Merge with environment variables (pydantic_settings handles this)
