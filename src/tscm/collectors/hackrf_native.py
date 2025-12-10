@@ -7,7 +7,9 @@ Example:
 2024-12-09, 14:30:00, 2400000000, 2500000000, 1000000, 100, -45.2, -46.3, -44.1, ...
 """
 
+import signal
 import subprocess
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -91,9 +93,6 @@ def run_hackrf_native_sweep(
                 file_handle = open(output_file, "w")
 
             try:
-                import signal
-                import time
-
                 start_time = time.time()
 
                 # Process output line by line with timeout

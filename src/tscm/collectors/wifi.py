@@ -2,6 +2,7 @@
 
 import csv
 import re
+import shutil
 import subprocess
 import time
 from datetime import datetime, timezone
@@ -43,7 +44,7 @@ def run_wifi_sweep(
     print(f"Wi-Fi sweep on interface {interface} for {duration} seconds")
 
     # Check if tools are available
-    if not subprocess.run(["which", "airmon-ng"], capture_output=True).returncode == 0:
+    if not shutil.which("airmon-ng"):
         print("Error: airmon-ng not found. Install with: apt install aircrack-ng")
         return False
 

@@ -1,6 +1,7 @@
 """BLE (Bluetooth Low Energy) scanning collector using Ubertooth or hcitool."""
 
 import re
+import shutil
 import subprocess
 import time
 from datetime import datetime, timezone
@@ -57,7 +58,7 @@ def _run_ubertooth_sweep(
 ) -> bool:
     """Run BLE sweep using Ubertooth."""
     # Check if ubertooth-btle is available
-    if not subprocess.run(["which", "ubertooth-btle"], capture_output=True).returncode == 0:
+    if not shutil.which("ubertooth-btle"):
         print("Error: ubertooth-btle not found. Install with: apt install ubertooth")
         return False
 
@@ -124,7 +125,7 @@ def _run_hcitool_sweep(
 ) -> bool:
     """Run BLE sweep using hcitool lescan."""
     # Check if hcitool is available
-    if not subprocess.run(["which", "hcitool"], capture_output=True).returncode == 0:
+    if not shutil.which("hcitool"):
         print("Error: hcitool not found. Install with: apt install bluez")
         return False
 

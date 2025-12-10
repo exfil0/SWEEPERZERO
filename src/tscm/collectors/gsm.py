@@ -1,6 +1,7 @@
 """GSM scanning collector using gr-gsm."""
 
 import re
+import shutil
 import subprocess
 import time
 from datetime import datetime, timezone
@@ -44,7 +45,7 @@ def run_gsm_sweep(
     print(f"Duration: {duration} seconds")
 
     # Check if grgsm_scanner is available
-    if not subprocess.run(["which", "grgsm_scanner"], capture_output=True).returncode == 0:
+    if not shutil.which("grgsm_scanner"):
         print("Error: grgsm_scanner not found")
         print("Install gr-gsm from: https://github.com/ptrkrysik/gr-gsm")
         return False

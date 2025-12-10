@@ -1,117 +1,4 @@
-"""Web dashboard for TSCM sweep visualization.
-
-Simple Flask-based dashboard for viewing sweep results.
-"""
-
-import json
-from pathlib import Path
-from typing import Optional
-
-from tscm.config import load_config
-from tscm.storage.store import SweepStore
-
-
-def create_app(config_path: Optional[Path] = None):
-    """
-    Create Flask application.
-
-    Args:
-        config_path: Optional path to config file
-
-    Returns:
-        Flask application instance
-    """
-    try:
-        from flask import Flask, jsonify, render_template, request
-    except ImportError:
-        raise ImportError("Flask is required for dashboard. Install with: pip install flask")
-
-    app = Flask(__name__, template_folder=str(Path(__file__).parent.parent / "templates"))
-    
-    # Load TSCM config
-    config = load_config(config_path)
-    store = SweepStore(config.storage.database_path, config.storage.enable_wal)
-
-    @app.route("/")
-    def index():
-        """Dashboard home page."""
-        return render_template("dashboard.html")
-
-    @app.route("/api/sweeps")
-    def get_sweeps():
-        """API endpoint to list sweeps."""
-        client = request.args.get("client")
-        site = request.args.get("site")
-        room = request.args.get("room")
-        limit = int(request.args.get("limit", 50))
-
-        sweeps = store.get_sweeps(
-            client_name=client,
-            site=site,
-            room=room,
-            limit=limit,
-        )
-
-        return jsonify(sweeps)
-
-    @app.route("/api/sweeps/<int:sweep_id>")
-    def get_sweep(sweep_id):
-        """API endpoint to get sweep details."""
-        sweep = store.get_sweep_by_id(str(sweep_id))
-        if not sweep:
-            return jsonify({"error": "Sweep not found"}), 404
-
-        # Get events summary
-        events_summary = {}
-        for event_type in ["rf", "wifi", "ble", "gsm"]:
-            events = store.get_events(sweep["id"], event_type=event_type, limit=1000)
-            events_summary[event_type] = {
-                "count": len(events),
-                "events": events[:100],  # Limit for performance
-            }
-
-        # Get anomalies
-        anomalies = store.get_anomalies(sweep["id"])
-
-        # Get artifacts
-        artifacts = store.get_artifacts(sweep["id"])
-
-        return jsonify({
-            "sweep": sweep,
-            "events": events_summary,
-            "anomalies": anomalies,
-            "artifacts": artifacts,
-        })
-
-    @app.route("/api/anomalies/<int:sweep_id>")
-    def get_anomalies(sweep_id):
-        """API endpoint to get anomalies for a sweep."""
-        min_score = float(request.args.get("min_score", 0.0))
-        kind = request.args.get("kind")
-
-        anomalies = store.get_anomalies(sweep_id, kind=kind, min_score=min_score)
-        return jsonify(anomalies)
-
-    return app
-
-
-def run_dashboard(host: str = "127.0.0.1", port: int = 5000, config_path: Optional[Path] = None):
-    """
-    Run the dashboard web server.
-
-    Args:
-        host: Host to bind to
-        port: Port to listen on
-        config_path: Optional path to config file
-    """
-    app = create_app(config_path)
-    print(f"Starting TSCM dashboard on http://{host}:{port}")
-    app.run(host=host, port=port, debug=True)
-
-
-def _get_default_dashboard_template() -> str:
-    """Get default dashboard HTML template."""
-    return """<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <title>TSCM Dashboard</title>
@@ -183,6 +70,8 @@ def _get_default_dashboard_template() -> str:
             border-radius: 4px;
             font-size: 14px;
             transition: background 0.3s;
+            border: none;
+            cursor: pointer;
         }
         .btn:hover { background: #5568d3; }
     </style>
@@ -227,12 +116,12 @@ def _get_default_dashboard_template() -> str:
                                       sweep.status === 'running' ? 'badge-warning' : 'badge-danger';
                     
                     html += '<tr>';
-                    html += `<td><strong>${sweep.sweep_id}</strong></td>`;
-                    html += `<td>${sweep.client_name}</td>`;
-                    html += `<td>${sweep.site || '-'} / ${sweep.room || '-'}</td>`;
+                    html += `<td><strong>${escapeHtml(sweep.sweep_id)}</strong></td>`;
+                    html += `<td>${escapeHtml(sweep.client_name)}</td>`;
+                    html += `<td>${escapeHtml(sweep.site || '-')} / ${escapeHtml(sweep.room || '-')}</td>`;
                     html += `<td>${new Date(sweep.start_time).toLocaleString()}</td>`;
-                    html += `<td><span class="badge ${statusBadge}">${sweep.status}</span></td>`;
-                    html += `<td><a href="#" class="btn" onclick="viewSweep(${sweep.id}); return false;">View</a></td>`;
+                    html += `<td><span class="badge ${statusBadge}">${escapeHtml(sweep.status)}</span></td>`;
+                    html += `<td><button class="btn" onclick="viewSweep(${sweep.id}); return false;">View</button></td>`;
                     html += '</tr>';
                 }
                 
@@ -240,8 +129,15 @@ def _get_default_dashboard_template() -> str:
                 document.getElementById('sweeps-list').innerHTML = html;
             } catch (error) {
                 document.getElementById('sweeps-list').innerHTML = 
-                    '<div class="empty">Error loading sweeps: ' + error.message + '</div>';
+                    '<div class="empty">Error loading sweeps: ' + escapeHtml(error.message) + '</div>';
             }
+        }
+        
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
         
         async function viewSweep(sweepId) {
@@ -255,8 +151,4 @@ def _get_default_dashboard_template() -> str:
         setInterval(loadSweeps, 30000);
     </script>
 </body>
-</html>"""
-
-
-if __name__ == "__main__":
-    run_dashboard()
+</html>
