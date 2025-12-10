@@ -7,15 +7,9 @@ from tscm.config import TSCMConfig
 from tscm.storage.store import SweepStore
 
 
-def run_wifi_sweep(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
+def run_wifi_sweep_wrapper(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
     """
-    Run Wi-Fi sweep (stub implementation).
-
-    TODO: Implement Wi-Fi capture using aircrack-ng suite.
-    - Use airmon-ng to enable monitor mode
-    - Use airodump-ng to capture Wi-Fi packets
-    - Parse output and store events
-    - Disable monitor mode after capture
+    Wrapper for Wi-Fi sweep to import the real implementation.
 
     Args:
         config: TSCM configuration
@@ -25,33 +19,17 @@ def run_wifi_sweep(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> b
     Returns:
         True if successful
     """
-    if not config.wifi.enabled:
-        print("Wi-Fi collection is disabled in config")
+    try:
+        from tscm.collectors.wifi import run_wifi_sweep
+        return run_wifi_sweep(config, store, sweep_db_id)
+    except ImportError as e:
+        print(f"Failed to import Wi-Fi collector: {e}")
         return False
 
-    print("Wi-Fi sweep: TODO - Not yet implemented")
-    print(f"  Would capture on interface: {config.wifi.interface}")
-    print(f"  Duration: {config.durations.wifi_duration} seconds")
 
-    # TODO: Implement Wi-Fi capture
-    # 1. Check if airmon-ng and airodump-ng are available
-    # 2. Enable monitor mode on the interface
-    # 3. Run airodump-ng for the specified duration
-    # 4. Parse CSV output and store Wi-Fi events (AP, clients, etc.)
-    # 5. Disable monitor mode
-    # 6. Store artifact reference to pcap file
-
-    return True
-
-
-def run_ble_sweep(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
+def run_ble_sweep_wrapper(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
     """
-    Run BLE sweep (stub implementation).
-
-    TODO: Implement BLE capture using Ubertooth.
-    - Use ubertooth-btle to capture BLE advertisements
-    - Parse output and extract MAC addresses
-    - Store BLE events
+    Wrapper for BLE sweep to import the real implementation.
 
     Args:
         config: TSCM configuration
@@ -61,32 +39,17 @@ def run_ble_sweep(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bo
     Returns:
         True if successful
     """
-    if not config.ble.enabled:
-        print("BLE collection is disabled in config")
+    try:
+        from tscm.collectors.ble import run_ble_sweep
+        return run_ble_sweep(config, store, sweep_db_id)
+    except ImportError as e:
+        print(f"Failed to import BLE collector: {e}")
         return False
 
-    print("BLE sweep: TODO - Not yet implemented")
-    print(f"  Would use device: {config.ble.interface}")
-    print(f"  Duration: {config.durations.ble_duration} seconds")
 
-    # TODO: Implement BLE capture
-    # 1. Check if ubertooth-btle or hcitool is available
-    # 2. Run ubertooth-btle -f -s for specified duration
-    # 3. Parse output to extract BLE advertisements and MAC addresses
-    # 4. Store BLE events with MAC, RSSI, advertisement data
-    # 5. Store artifact reference to raw log file
-
-    return True
-
-
-def run_gsm_sweep(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
+def run_gsm_sweep_wrapper(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
     """
-    Run GSM sweep (stub implementation).
-
-    TODO: Implement GSM scanning using gr-gsm.
-    - Use grgsm_scanner to scan GSM bands
-    - Parse cell tower information
-    - Store GSM events with MCC, MNC, LAC, CID, ARFCN
+    Wrapper for GSM sweep to import the real implementation.
 
     Args:
         config: TSCM configuration
@@ -96,23 +59,12 @@ def run_gsm_sweep(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bo
     Returns:
         True if successful
     """
-    if not config.gsm.enabled:
-        print("GSM collection is disabled in config")
+    try:
+        from tscm.collectors.gsm import run_gsm_sweep
+        return run_gsm_sweep(config, store, sweep_db_id)
+    except ImportError as e:
+        print(f"Failed to import GSM collector: {e}")
         return False
-
-    print("GSM sweep: TODO - Not yet implemented")
-    print(f"  Would use device: {config.gsm.device_string}")
-    print(f"  Bands: {config.gsm.bands}")
-    print(f"  Duration: {config.durations.gsm_duration} seconds")
-
-    # TODO: Implement GSM scanning
-    # 1. Check if grgsm_scanner is available
-    # 2. Run grgsm_scanner with configured bands
-    # 3. Parse output to extract cell information
-    # 4. Store GSM events with MCC, MNC, LAC, CID, ARFCN, power
-    # 5. Store artifact reference to raw scanner output
-
-    return True
 
 
 def run_all_sweeps(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
@@ -140,13 +92,13 @@ def run_all_sweeps(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> b
         sweep_tasks.append(("RF (RTL-SDR)", run_hackrf_sweep, config, store, sweep_db_id))
 
     if config.wifi.enabled:
-        sweep_tasks.append(("Wi-Fi", run_wifi_sweep, config, store, sweep_db_id))
+        sweep_tasks.append(("Wi-Fi", run_wifi_sweep_wrapper, config, store, sweep_db_id))
 
     if config.ble.enabled:
-        sweep_tasks.append(("BLE", run_ble_sweep, config, store, sweep_db_id))
+        sweep_tasks.append(("BLE", run_ble_sweep_wrapper, config, store, sweep_db_id))
 
     if config.gsm.enabled:
-        sweep_tasks.append(("GSM", run_gsm_sweep, config, store, sweep_db_id))
+        sweep_tasks.append(("GSM", run_gsm_sweep_wrapper, config, store, sweep_db_id))
 
     if not sweep_tasks:
         print("No sweeps enabled in configuration")

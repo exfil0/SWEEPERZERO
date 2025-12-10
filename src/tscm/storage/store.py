@@ -323,6 +323,7 @@ class SweepStore:
                     "power_db": e.power_db,
                     "mac_address": e.mac_address,
                     "ssid": e.ssid,
+                    "signal_strength": e.signal_strength,
                     "metadata": json.loads(e.event_metadata) if e.event_metadata else None,
                 }
                 for e in events

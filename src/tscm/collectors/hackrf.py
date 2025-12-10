@@ -1,10 +1,12 @@
 """HackRF and RTL-SDR RF collectors."""
 
+import shutil
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from tscm.collectors.hackrf_parser import HackRFParser
 from tscm.collectors.rf_parser import RTLPowerParser
 from tscm.config import TSCMConfig
 from tscm.storage.store import SweepStore
@@ -146,17 +148,14 @@ def run_rtl_power_sweep(
         return False
 
 
-def run_hackrf_sweep(
+def run_hackrf_native_sweep(
     config: TSCMConfig,
     store: SweepStore,
     sweep_db_id: int,
     output_dir: Optional[Path] = None,
 ) -> bool:
     """
-    Run HackRF sweep.
-
-    Note: HackRF uses a different output format than rtl_power.
-    This is a stub implementation. TODO: Implement HackRF parser.
+    Run native HackRF sweep using hackrf_sweep.
 
     Args:
         config: TSCM configuration
@@ -171,11 +170,183 @@ def run_hackrf_sweep(
         print("HackRF is disabled in config")
         return False
 
-    # For now, fall back to rtl_power if available
-    print("Note: HackRF parser not yet implemented, using RTL-SDR instead")
-    return run_rtl_power_sweep(config, store, sweep_db_id, output_dir)
+    # Check if hackrf_sweep is available
+    hackrf_sweep_path = shutil.which("hackrf_sweep")
+    if not hackrf_sweep_path:
+        print("hackrf_sweep not found, falling back to RTL-SDR")
+        return run_rtl_power_sweep(config, store, sweep_db_id, output_dir)
 
-    # TODO: Implement HackRF sweep parser
-    # HackRF output format is different from rtl_power
-    # Format: date, time, hz_low, hz_high, hz_bin_width, num_samples, dB, dB, ...
-    # See: https://github.com/mossmann/hackrf/wiki/hackrf_sweep
+    # Build hackrf_sweep command for each configured band
+    duration_sec = config.durations.rf_duration
+    all_success = True
+
+    for band in config.hackrf.bands:
+        freq_start_mhz = int(band.freq_start_mhz)
+        freq_end_mhz = int(band.freq_end_mhz)
+        
+        # hackrf_sweep uses -f for frequency range in MHz
+        cmd = [
+            "hackrf_sweep",
+            "-f",
+            f"{freq_start_mhz}:{freq_end_mhz}",
+            "-w",
+            str(int(band.step_mhz * 1e6)),  # Convert MHz to Hz for bin width
+        ]
+
+        print(f"Running HackRF sweep: {band.label} ({freq_start_mhz}-{freq_end_mhz} MHz)")
+        print(f"Command: {' '.join(cmd)}")
+        print(f"Duration: {duration_sec} seconds")
+
+        # Create temp file if output_dir specified
+        output_file = None
+        if output_dir:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%SZ")
+            output_file = output_dir / f"hackrf_sweep_{band.label}_{timestamp}.csv"
+
+        try:
+            # Run hackrf_sweep and stream output
+            # Note: hackrf_sweep writes to stdout by default
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,  # Line buffered
+            )
+
+            parser = HackRFParser(strict=False)
+            events_batch = []
+            batch_size = 100
+
+            file_handle = None
+            if output_file:
+                file_handle = open(output_file, "w")
+
+            try:
+                import time
+                start_time = time.time()
+                
+                # Process output line by line until duration expires
+                for line in process.stdout:
+                    # Check if duration exceeded
+                    if time.time() - start_time > duration_sec:
+                        process.terminate()
+                        break
+
+                    # Save to file if requested
+                    if file_handle:
+                        file_handle.write(line)
+
+                    # Parse line
+                    event = parser.parse_line(line)
+                    if event is None:
+                        continue
+
+                    # Convert to database events (one per frequency bin)
+                    for freq_hz, power_db in event.freq_bins:
+                        events_batch.append({
+                            "event_type": "rf",
+                            "timestamp": event.timestamp,
+                            "freq_hz": freq_hz,
+                            "power_db": power_db,
+                            "bandwidth_hz": event.bin_width_hz,
+                        })
+
+                    # Bulk insert when batch is full
+                    if len(events_batch) >= batch_size:
+                        store.add_events_bulk(sweep_db_id, events_batch)
+                        print(f"Stored {len(events_batch)} RF events")
+                        events_batch = []
+            finally:
+                # Close file
+                if file_handle:
+                    file_handle.close()
+
+                # Wait for process to complete
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+
+            # Store remaining events
+            if events_batch:
+                store.add_events_bulk(sweep_db_id, events_batch)
+                print(f"Stored {len(events_batch)} RF events")
+
+            # Add artifact record
+            if output_file and output_file.exists():
+                store.add_artifact(
+                    sweep_db_id,
+                    artifact_type="hackrf_sweep_csv",
+                    file_path=str(output_file),
+                    file_size_bytes=output_file.stat().st_size,
+                    description=f"HackRF sweep {band.label} {freq_start_mhz}-{freq_end_mhz} MHz",
+                )
+
+            print(f"HackRF sweep {band.label} completed. Parsed {parser.lines_parsed} lines, skipped {parser.lines_skipped}")
+
+            if parser.errors:
+                print(f"Warnings: {len(parser.errors)} parse errors occurred")
+
+            if process.returncode not in (0, None, -15):  # -15 is SIGTERM (expected when we terminate)
+                all_success = False
+
+        except FileNotFoundError:
+            print("Error: hackrf_sweep not found")
+            all_success = False
+        except KeyboardInterrupt:
+            print("\nHackRF sweep interrupted")
+            all_success = False
+        except Exception as e:
+            print(f"Error during HackRF sweep: {e}")
+            all_success = False
+
+    return all_success
+
+
+def run_hackrf_sweep(
+    config: TSCMConfig,
+    store: SweepStore,
+    sweep_db_id: int,
+    output_dir: Optional[Path] = None,
+) -> bool:
+    """
+    Run HackRF sweep with automatic fallback to RTL-SDR.
+
+    This function tries to use native hackrf_sweep first. If HackRF is not
+    available, it falls back to rtl_power.
+
+    Args:
+        config: TSCM configuration
+        store: Storage instance
+        sweep_db_id: Database ID of sweep
+        output_dir: Optional directory to save raw data
+
+    Returns:
+        True if successful
+    """
+    if not config.hackrf.enabled and not config.rtl_sdr.enabled:
+        print("Both HackRF and RTL-SDR are disabled in config")
+        return False
+
+    # Try HackRF native first if enabled
+    if config.hackrf.enabled:
+        hackrf_sweep_path = shutil.which("hackrf_sweep")
+        if hackrf_sweep_path:
+            print("Using native HackRF sweep")
+            return run_hackrf_native_sweep(config, store, sweep_db_id, output_dir)
+        else:
+            print("hackrf_sweep not found")
+
+    # Fall back to RTL-SDR if available
+    if config.rtl_sdr.enabled:
+        rtl_power_path = shutil.which("rtl_power")
+        if rtl_power_path:
+            print("Falling back to RTL-SDR (rtl_power)")
+            return run_rtl_power_sweep(config, store, sweep_db_id, output_dir)
+        else:
+            print("rtl_power not found")
+
+    print("No RF collection tools available (tried hackrf_sweep and rtl_power)")
+    return False

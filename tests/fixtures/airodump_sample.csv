@@ -1,0 +1,12 @@
+BSSID, First time seen, Last time seen, channel, Speed, Privacy, Cipher, Authentication, Power, # beacons, # IV, LAN IP, ID-length, ESSID, Key
+AA:BB:CC:DD:EE:01, 2024-12-09 14:30:00, 2024-12-09 14:45:00,   6,  54, WPA2, CCMP, PSK, -45,      150,        0,   0.  0.  0.  0,  10, HomeNetwork,
+AA:BB:CC:DD:EE:02, 2024-12-09 14:30:15, 2024-12-09 14:45:10,  11,  54, WPA2, CCMP, PSK, -67,       98,        0,   0.  0.  0.  0,  12, OfficeWiFi01,
+AA:BB:CC:DD:EE:03, 2024-12-09 14:31:00, 2024-12-09 14:44:55,   1,  54, WPA2, CCMP, PSK, -52,      145,        0,   0.  0.  0.  0,   8, Guest123,
+AA:BB:CC:DD:EE:04, 2024-12-09 14:32:00, 2024-12-09 14:45:20,   6,  54,     ,     ,    , -78,       45,        0,   0.  0.  0.  0,   0, ,
+AA:BB:CC:DD:EE:05, 2024-12-09 14:33:00, 2024-12-09 14:43:00,  36, 300, WPA2, CCMP, PSK, -55,      120,        0,   0.  0.  0.  0,  15, Enterprise_5G,
+
+Station MAC, First time seen, Last time seen, Power, # packets, BSSID, Probed ESSIDs
+11:22:33:44:55:01, 2024-12-09 14:30:05, 2024-12-09 14:45:05, -42,       350, AA:BB:CC:DD:EE:01, 
+11:22:33:44:55:02, 2024-12-09 14:31:10, 2024-12-09 14:44:50, -55,       180, AA:BB:CC:DD:EE:02, 
+11:22:33:44:55:03, 2024-12-09 14:32:15, 2024-12-09 14:43:45, -48,       225, AA:BB:CC:DD:EE:01, 
+11:22:33:44:55:04, 2024-12-09 14:33:20, 2024-12-09 14:42:40, -60,        95, (not associated) , HomeNetwork,Guest123
