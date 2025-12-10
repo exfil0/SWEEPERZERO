@@ -27,14 +27,9 @@ def run_wifi_sweep_wrapper(config: TSCMConfig, store: SweepStore, sweep_db_id: i
         return False
 
 
-def run_ble_sweep(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
+def run_ble_sweep_wrapper(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
     """
-    Run BLE sweep (stub implementation).
-
-    TODO: Implement BLE capture using Ubertooth.
-    - Use ubertooth-btle to capture BLE advertisements
-    - Parse output and extract MAC addresses
-    - Store BLE events
+    Wrapper for BLE sweep to import the real implementation.
 
     Args:
         config: TSCM configuration
@@ -44,22 +39,12 @@ def run_ble_sweep(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bo
     Returns:
         True if successful
     """
-    if not config.ble.enabled:
-        print("BLE collection is disabled in config")
+    try:
+        from tscm.collectors.ble import run_ble_sweep
+        return run_ble_sweep(config, store, sweep_db_id)
+    except ImportError as e:
+        print(f"Failed to import BLE collector: {e}")
         return False
-
-    print("BLE sweep: TODO - Not yet implemented")
-    print(f"  Would use device: {config.ble.interface}")
-    print(f"  Duration: {config.durations.ble_duration} seconds")
-
-    # TODO: Implement BLE capture
-    # 1. Check if ubertooth-btle or hcitool is available
-    # 2. Run ubertooth-btle -f -s for specified duration
-    # 3. Parse output to extract BLE advertisements and MAC addresses
-    # 4. Store BLE events with MAC, RSSI, advertisement data
-    # 5. Store artifact reference to raw log file
-
-    return True
 
 
 def run_gsm_sweep(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
@@ -126,7 +111,7 @@ def run_all_sweeps(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> b
         sweep_tasks.append(("Wi-Fi", run_wifi_sweep_wrapper, config, store, sweep_db_id))
 
     if config.ble.enabled:
-        sweep_tasks.append(("BLE", run_ble_sweep, config, store, sweep_db_id))
+        sweep_tasks.append(("BLE", run_ble_sweep_wrapper, config, store, sweep_db_id))
 
     if config.gsm.enabled:
         sweep_tasks.append(("GSM", run_gsm_sweep, config, store, sweep_db_id))
