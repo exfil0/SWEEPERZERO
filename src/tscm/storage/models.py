@@ -1,10 +1,8 @@
 """SQLAlchemy models for TSCM sweep storage."""
 
 from datetime import datetime, timezone
-from typing import Optional
 
 from sqlalchemy import (
-    Boolean,
     Column,
     DateTime,
     Float,

@@ -179,7 +179,7 @@ class TestRTLPowerParser:
 
     def test_parse_stream_from_file(self, parser, sample_csv_path):
         """Test parsing stream from file."""
-        with open(sample_csv_path, "r") as f:
+        with open(sample_csv_path) as f:
             events = parser.parse_stream(f)
 
         assert len(events) == 5

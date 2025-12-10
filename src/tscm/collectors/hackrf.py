@@ -1,7 +1,6 @@
 """HackRF and RTL-SDR RF collectors."""
 
 import subprocess
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
