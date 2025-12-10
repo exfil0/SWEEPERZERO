@@ -147,7 +147,7 @@ def compare_to_baseline(
         freq_bin = round(freq_mhz / freq_bin_mhz) * freq_bin_mhz
 
         # Check if we have baseline for this frequency
-        freq_key = str(freq_bin)
+        freq_key = freq_bin
         if freq_key not in baseline_freqs:
             # Unknown frequency - could be anomaly
             anomalies.append({
