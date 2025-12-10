@@ -7,15 +7,9 @@ from tscm.config import TSCMConfig
 from tscm.storage.store import SweepStore
 
 
-def run_wifi_sweep(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
+def run_wifi_sweep_wrapper(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
     """
-    Run Wi-Fi sweep (stub implementation).
-
-    TODO: Implement Wi-Fi capture using aircrack-ng suite.
-    - Use airmon-ng to enable monitor mode
-    - Use airodump-ng to capture Wi-Fi packets
-    - Parse output and store events
-    - Disable monitor mode after capture
+    Wrapper for Wi-Fi sweep to import the real implementation.
 
     Args:
         config: TSCM configuration
@@ -25,23 +19,12 @@ def run_wifi_sweep(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> b
     Returns:
         True if successful
     """
-    if not config.wifi.enabled:
-        print("Wi-Fi collection is disabled in config")
+    try:
+        from tscm.collectors.wifi import run_wifi_sweep
+        return run_wifi_sweep(config, store, sweep_db_id)
+    except ImportError as e:
+        print(f"Failed to import Wi-Fi collector: {e}")
         return False
-
-    print("Wi-Fi sweep: TODO - Not yet implemented")
-    print(f"  Would capture on interface: {config.wifi.interface}")
-    print(f"  Duration: {config.durations.wifi_duration} seconds")
-
-    # TODO: Implement Wi-Fi capture
-    # 1. Check if airmon-ng and airodump-ng are available
-    # 2. Enable monitor mode on the interface
-    # 3. Run airodump-ng for the specified duration
-    # 4. Parse CSV output and store Wi-Fi events (AP, clients, etc.)
-    # 5. Disable monitor mode
-    # 6. Store artifact reference to pcap file
-
-    return True
 
 
 def run_ble_sweep(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
@@ -140,7 +123,7 @@ def run_all_sweeps(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> b
         sweep_tasks.append(("RF (RTL-SDR)", run_hackrf_sweep, config, store, sweep_db_id))
 
     if config.wifi.enabled:
-        sweep_tasks.append(("Wi-Fi", run_wifi_sweep, config, store, sweep_db_id))
+        sweep_tasks.append(("Wi-Fi", run_wifi_sweep_wrapper, config, store, sweep_db_id))
 
     if config.ble.enabled:
         sweep_tasks.append(("BLE", run_ble_sweep, config, store, sweep_db_id))
