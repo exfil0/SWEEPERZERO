@@ -124,6 +124,28 @@ class Artifact(Base):
     __table_args__ = (Index("idx_artifact_sweep_type", "sweep_id", "artifact_type"),)
 
 
+class Anomaly(Base):
+    """Represents a detected anomaly during a sweep."""
+
+    __tablename__ = "anomalies"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sweep_id = Column(Integer, ForeignKey("sweeps.id", ondelete="CASCADE"), nullable=False)
+    event_ref = Column(Integer, nullable=True)  # Optional reference to specific event ID
+    score = Column(Float, nullable=False)  # Anomaly score (0.0 - 1.0)
+    kind = Column(String(50), nullable=False, index=True)  # Type: freq_anomaly, rogue_ap, unknown_ble, etc.
+    metadata = Column(Text, nullable=True)  # JSON string for additional details
+    created_at = Column(DateTime, default=utcnow, nullable=False)
+
+    # Relationships
+    sweep = relationship("Sweep")
+
+    __table_args__ = (
+        Index("idx_anomaly_sweep_kind", "sweep_id", "kind"),
+        Index("idx_anomaly_score", "score"),
+    )
+
+
 def create_engine_with_wal(database_url: str, enable_wal: bool = True, echo: bool = False):
     """
     Create SQLAlchemy engine with WAL mode enabled.

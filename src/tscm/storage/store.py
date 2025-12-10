@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 from sqlalchemy import desc, select
 from sqlalchemy.orm import sessionmaker
 
-from .models import Artifact, Event, Sweep, create_engine_with_wal, init_db
+from .models import Anomaly, Artifact, Event, Sweep, create_engine_with_wal, init_db
 
 
 class SweepStore:
@@ -343,4 +343,77 @@ class SweepStore:
                     "description": a.description,
                 }
                 for a in artifacts
+            ]
+
+    def insert_anomaly(
+        self,
+        sweep_id: int,
+        event_id: Optional[int],
+        kind: str,
+        score: float,
+        metadata: Optional[Dict] = None,
+    ) -> int:
+        """
+        Insert an anomaly record.
+
+        Args:
+            sweep_id: Database ID of sweep
+            event_id: Optional reference to specific event ID
+            kind: Type of anomaly (freq_anomaly, rogue_ap, unknown_ble, etc.)
+            score: Anomaly score (0.0 - 1.0)
+            metadata: Additional metadata as dict
+
+        Returns:
+            Database ID of created anomaly
+        """
+        with self.SessionLocal() as session:
+            anomaly = Anomaly(
+                sweep_id=sweep_id,
+                event_ref=event_id,
+                kind=kind,
+                score=score,
+                metadata=json.dumps(metadata) if metadata else None,
+            )
+            session.add(anomaly)
+            session.commit()
+            session.refresh(anomaly)
+            return anomaly.id
+
+    def get_anomalies(
+        self, sweep_db_id: int, kind: Optional[str] = None, min_score: float = 0.0
+    ) -> List[Dict]:
+        """
+        Get anomalies for a sweep.
+
+        Args:
+            sweep_db_id: Database ID of sweep
+            kind: Optional filter by anomaly kind
+            min_score: Minimum anomaly score to return
+
+        Returns:
+            List of anomaly records
+        """
+        with self.SessionLocal() as session:
+            stmt = (
+                select(Anomaly)
+                .where(Anomaly.sweep_id == sweep_db_id)
+                .where(Anomaly.score >= min_score)
+                .order_by(desc(Anomaly.score))
+            )
+
+            if kind:
+                stmt = stmt.where(Anomaly.kind == kind)
+
+            anomalies = session.scalars(stmt).all()
+
+            return [
+                {
+                    "id": a.id,
+                    "event_ref": a.event_ref,
+                    "kind": a.kind,
+                    "score": a.score,
+                    "metadata": json.loads(a.metadata) if a.metadata else None,
+                    "created_at": a.created_at,
+                }
+                for a in anomalies
             ]
