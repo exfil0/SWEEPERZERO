@@ -258,7 +258,9 @@ def get_baseline_sweeps(
     cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_back)
     recent_sweeps = [
         s for s in sweeps
-        if s["start_time"] and s["start_time"].replace(tzinfo=timezone.utc) >= cutoff_date
+        if s["start_time"] and (
+            s["start_time"].astimezone(timezone.utc) if s["start_time"].tzinfo else s["start_time"].replace(tzinfo=timezone.utc)
+        ) >= cutoff_date
         and s["status"] == "completed"
     ]
 

@@ -89,7 +89,13 @@ def create_app(config_path: Optional[Path] = None):
     @app.route("/api/anomalies/<int:sweep_id>")
     def get_anomalies(sweep_id):
         """API endpoint to get anomalies for a sweep."""
-        min_score = float(request.args.get("min_score", 0.0))
+        # Validate and clamp min_score parameter
+        try:
+            min_score = float(request.args.get("min_score", 0.0))
+            min_score = max(0.0, min(min_score, 1.0))  # Clamp between 0.0 and 1.0
+        except (ValueError, TypeError):
+            min_score = 0.0
+        
         kind = request.args.get("kind")
 
         anomalies = store.get_anomalies(sweep_id, kind=kind, min_score=min_score)
