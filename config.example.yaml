@@ -1,0 +1,85 @@
+# SWEEPERZERO Configuration Example
+# 
+# This file shows all available configuration options with their defaults.
+# Copy this to config.yaml and customize as needed.
+#
+# Configuration Load Order:
+# 1. Default values (shown here)
+# 2. This YAML file (config.yaml)
+# 3. Environment variables (TSCM_* prefix)
+# 4. .env file
+#
+# Environment variables override YAML. Use nested keys with __ delimiter:
+# TSCM_CLIENT_NAME="ACME_CORP"
+# TSCM_GPS__ENABLE_GPS=false
+# TSCM_HACKRF__ENABLED=true
+
+# Client/Project Identification
+client_name: default_client
+base_dir: ~/.tscm/data/clients  # Base directory for storing sweep data
+
+# GPS Configuration
+gps:
+  enable_gps: true          # Enable GPS tagging of sweeps
+  gpsd_host: 127.0.0.1      # GPSD daemon host
+  gpsd_port: 2947           # GPSD daemon port
+
+# Collector Durations (seconds)
+durations:
+  rf_duration: 600          # HackRF and RTL-SDR sweep duration
+  wifi_duration: 900        # Wi-Fi monitoring duration (15 min)
+  ble_duration: 900         # BLE monitoring duration (15 min)
+  gsm_duration: 600         # GSM scan duration (10 min)
+
+# HackRF Configuration
+hackrf:
+  enabled: true
+  bands:
+    - freq_start_mhz: 25
+      freq_end_mhz: 300
+      step_mhz: 5
+      label: rf_hackrf_low
+    - freq_start_mhz: 300
+      freq_end_mhz: 1200
+      step_mhz: 5
+      label: rf_hackrf_mid
+    - freq_start_mhz: 1200
+      freq_end_mhz: 6000
+      step_mhz: 10
+      label: rf_hackrf_high
+
+# RTL-SDR Configuration (rtl_power)
+rtl_sdr:
+  enabled: true
+  freq_start_mhz: 50        # Start frequency in MHz
+  freq_end_mhz: 1700        # End frequency in MHz
+  bin_size_hz: 1000000      # Frequency bin size in Hz (1 MHz)
+  interval_seconds: 10      # Integration interval
+
+# Wi-Fi Configuration
+wifi:
+  enabled: true
+  interface: wlan0          # Wi-Fi interface to use for monitoring
+
+# BLE Configuration
+ble:
+  enabled: true
+  interface: ubertooth      # BLE device: ubertooth, hci0, etc.
+
+# GSM Configuration
+gsm:
+  enabled: false            # Enable GSM scanning (requires bladeRF + gr-gsm)
+  device_string: bladerf=0  # OsmoSDR device string for gr-gsm
+  bands: EGSM900,DCS1800    # GSM bands to scan
+  allowed_mcc_mnc:          # Allowed MCC-MNC pairs for rogue detection
+    - "655-01"              # Example: Vodacom ZA
+    - "655-07"              # Example: Cell C ZA
+    - "655-10"              # Example: MTN ZA
+
+# Storage Configuration
+storage:
+  database_path: ~/.tscm/data/sweeps.db  # SQLite database path
+  enable_wal: true                        # Enable Write-Ahead Logging mode
+
+# Orchestration
+parallel_sweeps: true     # Run compatible sweeps in parallel (where feasible)
