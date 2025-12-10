@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TSCM Sweep Report</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        
+        .card h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #667eea;
+            border-bottom: 3px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .info-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .info-item label {
+            display: block;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .info-item .value {
+            font-size: 18px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #667eea;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .anomaly-score {
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        .score-high {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .score-medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .score-low {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-box {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-box .number {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-box .label {
+            font-size: 14px;
+            opacity: 0.9;
+            text-transform: uppercase;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
+            border-top: 1px solid #e0e0e0;
+            margin-top: 30px;
+        }
+        
+        @media print {
+            body {
+                background: white;
+            }
+            .card {
+                box-shadow: none;
+                border: 1px solid #e0e0e0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔍 TSCM Sweep Report</h1>
+        <p class="subtitle">Technical Surveillance Counter-Measures Analysis</p>
+    </div>
+
+    <div class="container">
+        <!-- Sweep Information -->
+        <div class="card">
+            <h2>Sweep Information</h2>
+            <div id="sweep-info">Loading...</div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="card">
+            <h2>Event Statistics</h2>
+            <div id="event-stats">Loading...</div>
+        </div>
+
+        <!-- Anomalies -->
+        <div class="card">
+            <h2>Detected Anomalies</h2>
+            <div id="anomalies">Loading...</div>
+        </div>
+
+        <!-- Artifacts -->
+        <div class="card">
+            <h2>Capture Artifacts</h2>
+            <div id="artifacts">Loading...</div>
+        </div>
+
+        <div class="footer">
+            <p>Generated by SWEEPERZERO | <span id="timestamp"></span></p>
+        </div>
+    </div>
+
+    <script>
+        // This template expects sweep data to be injected via {{SWEEP_DATA}}
+        const sweepData = {{SWEEP_DATA}};
+        
+        function formatDateTime(dateStr) {
+            if (!dateStr) return 'N/A';
+            return new Date(dateStr).toLocaleString();
+        }
+        
+        function renderSweepInfo() {
+            const sweep = sweepData.sweep;
+            const html = `
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Sweep ID</label>
+                        <div class="value">${sweep.sweep_id}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Client</label>
+                        <div class="value">${sweep.client_name}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Site</label>
+                        <div class="value">${sweep.site || 'N/A'}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Room</label>
+                        <div class="value">${sweep.room || 'N/A'}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Status</label>
+                        <div class="value">
+                            <span class="badge ${sweep.status === 'completed' ? 'badge-success' : sweep.status === 'running' ? 'badge-warning' : 'badge-danger'}">
+                                ${sweep.status}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <label>Start Time</label>
+                        <div class="value">${formatDateTime(sweep.start_time)}</div>
+                    </div>
+                    ${sweep.end_time ? `
+                    <div class="info-item">
+                        <label>End Time</label>
+                        <div class="value">${formatDateTime(sweep.end_time)}</div>
+                    </div>
+                    ` : ''}
+                    ${sweep.gps_lat && sweep.gps_lon ? `
+                    <div class="info-item">
+                        <label>GPS Coordinates</label>
+                        <div class="value">${sweep.gps_lat.toFixed(6)}, ${sweep.gps_lon.toFixed(6)}</div>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            document.getElementById('sweep-info').innerHTML = html;
+        }
+        
+        function renderEventStats() {
+            const events = sweepData.events;
+            const rfCount = events.rf?.length || 0;
+            const wifiCount = events.wifi?.length || 0;
+            const bleCount = events.ble?.length || 0;
+            const gsmCount = events.gsm?.length || 0;
+            
+            const html = `
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="number">${rfCount}</div>
+                        <div class="label">RF Events</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">${wifiCount}</div>
+                        <div class="label">Wi-Fi Events</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">${bleCount}</div>
+                        <div class="label">BLE Events</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">${gsmCount}</div>
+                        <div class="label">GSM Events</div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('event-stats').innerHTML = html;
+        }
+        
+        function renderAnomalies() {
+            const anomalies = sweepData.anomalies;
+            
+            if (!anomalies || anomalies.length === 0) {
+                document.getElementById('anomalies').innerHTML = 
+                    '<div class="empty-state">✓ No significant anomalies detected</div>';
+                return;
+            }
+            
+            let html = '<table><thead><tr>';
+            html += '<th>Score</th><th>Type</th><th>Details</th><th>Time</th>';
+            html += '</tr></thead><tbody>';
+            
+            for (const anomaly of anomalies.slice(0, 50)) {
+                const scoreClass = anomaly.score > 0.7 ? 'score-high' : 
+                                 anomaly.score > 0.4 ? 'score-medium' : 'score-low';
+                
+                html += '<tr>';
+                html += `<td><span class="anomaly-score ${scoreClass}">${anomaly.score.toFixed(2)}</span></td>`;
+                html += `<td><span class="badge badge-warning">${anomaly.kind}</span></td>`;
+                html += `<td>${anomaly.metadata?.details || 'N/A'}</td>`;
+                html += `<td>${formatDateTime(anomaly.created_at)}</td>`;
+                html += '</tr>';
+            }
+            
+            html += '</tbody></table>';
+            
+            if (anomalies.length > 50) {
+                html += `<p style="margin-top: 15px; color: #666;">Showing 50 of ${anomalies.length} anomalies</p>`;
+            }
+            
+            document.getElementById('anomalies').innerHTML = html;
+        }
+        
+        function renderArtifacts() {
+            const artifacts = sweepData.artifacts;
+            
+            if (!artifacts || artifacts.length === 0) {
+                document.getElementById('artifacts').innerHTML = 
+                    '<div class="empty-state">No artifacts recorded</div>';
+                return;
+            }
+            
+            let html = '<table><thead><tr>';
+            html += '<th>Type</th><th>File Path</th><th>Size</th><th>Description</th>';
+            html += '</tr></thead><tbody>';
+            
+            for (const artifact of artifacts) {
+                const sizeMB = artifact.file_size_bytes ? 
+                             (artifact.file_size_bytes / (1024 * 1024)).toFixed(2) : 'N/A';
+                
+                html += '<tr>';
+                html += `<td><span class="badge badge-info">${artifact.artifact_type}</span></td>`;
+                html += `<td style="font-family: monospace; font-size: 12px;">${artifact.file_path || 'N/A'}</td>`;
+                html += `<td>${sizeMB} MB</td>`;
+                html += `<td>${artifact.description || ''}</td>`;
+                html += '</tr>';
+            }
+            
+            html += '</tbody></table>';
+            document.getElementById('artifacts').innerHTML = html;
+        }
+        
+        function render() {
+            renderSweepInfo();
+            renderEventStats();
+            renderAnomalies();
+            renderArtifacts();
+            document.getElementById('timestamp').textContent = new Date().toLocaleString();
+        }
+        
+        // Render when page loads
+        if (sweepData) {
+            render();
+        } else {
+            document.body.innerHTML = '<div class="container"><div class="card"><p class="empty-state">No sweep data available</p></div></div>';
+        }
+    </script>
+</body>
+</html>

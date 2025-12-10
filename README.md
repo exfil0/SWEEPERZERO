@@ -231,6 +231,54 @@ tscm sweep --kind all --client acme --site dc1 --room server_room
 
 Runs all enabled collectors (RF, Wi-Fi, BLE, GSM) in parallel where feasible.
 
+### Baseline and Anomaly Detection
+
+Create a baseline from historical sweeps to detect anomalies:
+
+```bash
+# Create baseline from past 30 days of sweeps
+tscm baseline --client acme --site hq --output baseline.json
+
+# Compare a sweep to baseline (programmatically)
+python -c "
+from tscm.storage.store import SweepStore
+from tscm.baseline import load_baseline, compare_to_baseline, store_anomalies
+
+store = SweepStore('~/.tscm/data/sweeps.db')
+baseline = load_baseline('baseline.json')
+anomalies = compare_to_baseline(store, sweep_id=1, baseline=baseline)
+store_anomalies(store, sweep_id=1, anomalies=anomalies)
+"
+```
+
+### Generating Reports
+
+Generate reports in multiple formats:
+
+```bash
+# Text report (to console)
+tscm report sweep_id_20241209_143000Z
+
+# Save as text file
+tscm report sweep_id_20241209_143000Z --output report.txt --format text
+
+# Generate JSON report
+tscm report sweep_id_20241209_143000Z --output report.json --format json
+
+# Generate HTML report
+tscm report sweep_id_20241209_143000Z --output report.html --format html
+```
+
+### Web Dashboard
+
+Launch the interactive web dashboard:
+
+```bash
+tscm dashboard
+```
+
+Then open http://127.0.0.1:5000 in your browser to view sweeps, events, and anomalies.
+
 ### Viewing Results
 
 Results are stored in SQLite database (default: `~/.tscm/data/sweeps.db`).
@@ -247,6 +295,9 @@ sweeps = store.get_sweeps(limit=10)
 
 # Get events from a sweep
 events = store.get_events(sweep_db_id=1, event_type="rf", limit=100)
+
+# Get anomalies
+anomalies = store.get_anomalies(sweep_db_id=1, min_score=0.5)
 ```
 
 ---
@@ -323,14 +374,26 @@ SWEEPERZERO/
 ├── src/tscm/
 │   ├── cli.py              # Typer CLI interface
 │   ├── config.py           # Pydantic configuration models
+│   ├── baseline.py         # Baseline and anomaly detection
+│   ├── report.py           # Report generation
 │   ├── collectors/
 │   │   ├── rf_parser.py    # rtl_power CSV parser
 │   │   ├── hackrf.py       # HackRF/RTL-SDR integration
+│   │   ├── hackrf_native.py # Native HackRF parser
+│   │   ├── wifi.py         # Wi-Fi monitoring
+│   │   ├── ble.py          # BLE scanning
+│   │   ├── gsm.py          # GSM scanning
 │   │   └── orchestrator.py # Multi-collector orchestration
-│   └── storage/
-│       ├── models.py       # SQLAlchemy models
-│       └── store.py        # Storage API
+│   ├── storage/
+│   │   ├── models.py       # SQLAlchemy models
+│   │   └── store.py        # Storage API
+│   ├── dashboard/
+│   │   └── app.py          # Flask web dashboard
+│   └── templates/
+│       └── sweep_report.html # HTML report template
 ├── tests/
+│   ├── test_rf_parser.py
+│   └── test_rf_and_baseline.py
 ├── scripts/install.sh
 ├── deploy/
 └── config.example.yaml
@@ -340,16 +403,20 @@ SWEEPERZERO/
 
 1. CLI Command → Parse arguments, load config
 2. Create Sweep → Initialize database record
-3. Run Collectors → Execute tools
+3. Run Collectors → Execute tools (RTL-SDR, HackRF, Wi-Fi, BLE, GSM)
 4. Parse Output → Stream processing
 5. Store Events → Bulk insert into SQLite
 6. Update Sweep → Mark completion status
+7. (Optional) Baseline → Compare to historical data
+8. (Optional) Detect Anomalies → Flag suspicious signals
+9. (Optional) Generate Report → Text, JSON, or HTML output
 
 ### Database Schema
 
 - **sweeps**: Session metadata (client, site, room, timestamps, GPS)  
 - **events**: Individual RF/Wi-Fi/BLE/GSM observations  
 - **artifacts**: References to raw capture files
+- **anomalies**: Detected anomalies with scores and metadata
 
 ---
 
@@ -376,9 +443,53 @@ pytest --cov=tscm
 
 1. Create `src/tscm/collectors/your_collector.py`
 2. Implement function: `run_your_sweep(config, store, sweep_db_id) -> bool`
-3. Add to orchestrator
-4. Write tests
-5. Update config schema
+3. Import and add to `orchestrator.py`
+4. Write tests in `tests/`
+5. Update config schema in `config.py` if needed
+
+Example collector structure:
+
+```python
+def run_your_sweep(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
+    """Run your custom sweep."""
+    if not config.your_config.enabled:
+        return False
+    
+    # 1. Run collection tool
+    # 2. Parse output
+    # 3. Store events: store.add_event(...)
+    # 4. Store artifacts: store.add_artifact(...)
+    
+    return True
+```
+
+### Creating Baselines
+
+Baselines detect anomalies by comparing new sweeps to historical data:
+
+```python
+from tscm.baseline import create_baseline, compare_to_baseline
+
+# Create baseline from multiple sweeps
+baseline = create_baseline(store, sweep_ids=[1, 2, 3], freq_bin_mhz=1.0)
+
+# Compare new sweep
+anomalies = compare_to_baseline(store, sweep_id=4, baseline=baseline)
+```
+
+### Generating Custom Reports
+
+Extend the reporting system:
+
+```python
+from tscm.report import generate_json_report
+
+# Get sweep data
+data = generate_json_report(store, sweep_id=1)
+
+# Process and format as needed
+# data contains: sweep, events, anomalies, artifacts
+```
 
 ---
 
@@ -400,10 +511,11 @@ For non-root operation:
 
 ### Known Limitations
 
-- Wi-Fi: Requires monitor mode
+- Wi-Fi: Requires monitor mode-capable adapter
 - BLE: Ubertooth detection is probabilistic
 - GSM: Scanning may be restricted in some jurisdictions
 - RF: May miss narrow-band or frequency-hopping transmitters
+- Baseline: Requires multiple historical sweeps for accuracy
 
 ---
 
@@ -413,6 +525,12 @@ For non-root operation:
 
 ```bash
 sudo apt install rtl-sdr
+```
+
+### "Flask not found" (for dashboard)
+
+```bash
+pip install flask
 ```
 
 ### "Permission denied" accessing USB

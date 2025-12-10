@@ -405,5 +405,205 @@ def sweep(
         raise typer.Exit(1)
 
 
+@app.command()
+def baseline(
+    client: str = typer.Option(
+        ...,
+        "--client",
+        help="Client name for baseline",
+    ),
+    site: Optional[str] = typer.Option(
+        None,
+        "--site",
+        help="Site name",
+    ),
+    room: Optional[str] = typer.Option(
+        None,
+        "--room",
+        help="Room name",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output file for baseline JSON",
+    ),
+    days_back: int = typer.Option(
+        30,
+        "--days",
+        help="Number of days to look back for sweeps",
+    ),
+    config_path: Optional[Path] = typer.Option(
+        None,
+        "--config",
+        "-c",
+        help="Path to config file",
+    ),
+):
+    """Create RF baseline from historical sweeps."""
+    try:
+        config = load_config(config_path)
+    except Exception as e:
+        rprint(f"[red]Error loading config: {e}[/red]")
+        raise typer.Exit(1)
+
+    try:
+        from tscm.baseline import create_baseline, get_baseline_sweeps
+
+        store = SweepStore(config.storage.database_path, config.storage.enable_wal)
+
+        rprint(f"[bold]Creating baseline for {client}[/bold]")
+        if site:
+            rprint(f"Site: {site}")
+        if room:
+            rprint(f"Room: {room}")
+        rprint()
+
+        # Get suitable sweeps
+        sweep_ids = get_baseline_sweeps(
+            store,
+            client_name=client,
+            site=site,
+            room=room,
+            days_back=days_back,
+            min_sweeps=3,
+        )
+
+        if not sweep_ids:
+            rprint("[yellow]No completed sweeps found for baseline[/yellow]")
+            raise typer.Exit(1)
+
+        rprint(f"Found {len(sweep_ids)} sweeps for baseline")
+
+        # Create baseline
+        baseline = create_baseline(
+            store,
+            sweep_ids,
+            freq_bin_mhz=1.0,
+            output_path=output,
+        )
+
+        rprint(f"[green]✓[/green] Baseline created with {len(baseline['frequencies'])} frequency bins")
+
+        if output:
+            rprint(f"[green]✓[/green] Baseline saved to {output}")
+
+    except ImportError as e:
+        rprint(f"[red]Error importing baseline module: {e}[/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        rprint(f"[red]Error creating baseline: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def report(
+    sweep_id: str = typer.Argument(..., help="Sweep ID to generate report for"),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output file path",
+    ),
+    format: str = typer.Option(
+        "text",
+        "--format",
+        "-f",
+        help="Report format: text, json, html",
+    ),
+    config_path: Optional[Path] = typer.Option(
+        None,
+        "--config",
+        "-c",
+        help="Path to config file",
+    ),
+):
+    """Generate a report for a sweep."""
+    try:
+        config = load_config(config_path)
+    except Exception as e:
+        rprint(f"[red]Error loading config: {e}[/red]")
+        raise typer.Exit(1)
+
+    try:
+        from tscm.report import generate_html_report, generate_json_report, generate_text_report
+
+        store = SweepStore(config.storage.database_path, config.storage.enable_wal)
+
+        # Get sweep by ID
+        sweep = store.get_sweep_by_id(sweep_id)
+        if not sweep:
+            rprint(f"[red]Sweep {sweep_id} not found[/red]")
+            raise typer.Exit(1)
+
+        rprint(f"[bold]Generating {format} report for {sweep_id}[/bold]\n")
+
+        # Generate report based on format
+        if format == "text":
+            report_text = generate_text_report(store, sweep["id"], output)
+            if not output:
+                rprint(report_text)
+        elif format == "json":
+            generate_json_report(store, sweep["id"], output)
+        elif format == "html":
+            generate_html_report(store, sweep["id"], output)
+        else:
+            rprint(f"[red]Unknown format: {format}[/red]")
+            rprint("Available formats: text, json, html")
+            raise typer.Exit(1)
+
+        if output:
+            rprint(f"\n[green]✓[/green] Report saved to {output}")
+
+    except ImportError as e:
+        rprint(f"[red]Error importing report module: {e}[/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        rprint(f"[red]Error generating report: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def dashboard(
+    host: str = typer.Option(
+        "127.0.0.1",
+        "--host",
+        help="Host to bind to",
+    ),
+    port: int = typer.Option(
+        5000,
+        "--port",
+        "-p",
+        help="Port to listen on",
+    ),
+    config_path: Optional[Path] = typer.Option(
+        None,
+        "--config",
+        "-c",
+        help="Path to config file",
+    ),
+):
+    """Start the web dashboard."""
+    try:
+        from tscm.dashboard.app import run_dashboard
+
+        rprint("[bold]Starting TSCM Dashboard[/bold]")
+        rprint(f"URL: http://{host}:{port}")
+        rprint("\nPress Ctrl+C to stop")
+        rprint()
+
+        run_dashboard(host=host, port=port, config_path=config_path)
+
+    except ImportError as e:
+        rprint(f"[red]Error: {e}[/red]")
+        rprint("The dashboard requires Flask. Install with: pip install flask")
+        raise typer.Exit(1)
+    except KeyboardInterrupt:
+        rprint("\n[yellow]Dashboard stopped[/yellow]")
+    except Exception as e:
+        rprint(f"[red]Error starting dashboard: {e}[/red]")
+        raise typer.Exit(1)
+
+
 if __name__ == "__main__":
     app()

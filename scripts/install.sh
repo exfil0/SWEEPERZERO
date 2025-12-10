@@ -101,10 +101,16 @@ apt-get install -y \
 echo ""
 echo "Installing Python dependencies..."
 pip3 install --upgrade pip
-pip3 install -e /opt/tscm || {
+
+# Install package from current directory or /opt/tscm
+if [ -f "pyproject.toml" ]; then
+    pip3 install -e .
+elif [ -d "/opt/tscm" ]; then
+    pip3 install -e /opt/tscm
+else
     echo -e "${YELLOW}    Could not install tscm package.${NC}"
     echo "    Run 'pip3 install -e .' from the SWEEPERZERO directory"
-}
+fi
 
 echo ""
 echo -e "${GREEN}Installation complete!${NC}"
