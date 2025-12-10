@@ -134,7 +134,7 @@ class Anomaly(Base):
     event_ref = Column(Integer, nullable=True)  # Optional reference to specific event ID
     score = Column(Float, nullable=False)  # Anomaly score (0.0 - 1.0)
     kind = Column(String(50), nullable=False, index=True)  # Type: freq_anomaly, rogue_ap, unknown_ble, etc.
-    metadata = Column(Text, nullable=True)  # JSON string for additional details
+    anomaly_metadata = Column(Text, nullable=True)  # JSON string for additional details (renamed from metadata to avoid conflict)
     created_at = Column(DateTime, default=utcnow, nullable=False)
 
     # Relationships

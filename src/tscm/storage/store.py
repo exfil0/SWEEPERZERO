@@ -372,7 +372,7 @@ class SweepStore:
                 event_ref=event_id,
                 kind=kind,
                 score=score,
-                metadata=json.dumps(metadata) if metadata else None,
+                anomaly_metadata=json.dumps(metadata) if metadata else None,
             )
             session.add(anomaly)
             session.commit()
@@ -412,7 +412,7 @@ class SweepStore:
                     "event_ref": a.event_ref,
                     "kind": a.kind,
                     "score": a.score,
-                    "metadata": json.loads(a.metadata) if a.metadata else None,
+                    "metadata": json.loads(a.anomaly_metadata) if a.anomaly_metadata else None,
                     "created_at": a.created_at,
                 }
                 for a in anomalies
