@@ -1,7 +1,7 @@
 """Storage API for sweep data."""
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -68,7 +68,7 @@ class SweepStore:
                 client_name=client_name,
                 site=site,
                 room=room,
-                start_time=start_time or datetime.utcnow(),
+                start_time=start_time or datetime.now(timezone.utc),
                 status="running",
                 gps_lat=gps_lat,
                 gps_lon=gps_lon,

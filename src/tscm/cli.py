@@ -3,7 +3,7 @@
 import shutil
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
@@ -341,7 +341,7 @@ def sweep(
         raise typer.Exit(1)
 
     # Create sweep ID
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%SZ")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%SZ")
     sweep_id = f"{config.client_name}_{site or 'unknown'}_{room or 'unknown'}_{timestamp}"
 
     rprint(f"[bold]Starting sweep: {sweep_id}[/bold]")
@@ -389,7 +389,7 @@ def sweep(
             raise typer.Exit(1)
 
         if success:
-            store.update_sweep(sweep_db_id, end_time=datetime.utcnow(), status="completed")
+            store.update_sweep(sweep_db_id, end_time=datetime.now(timezone.utc), status="completed")
             rprint(f"\n[green]✓ Sweep completed successfully[/green]")
             rprint(f"Sweep ID: {sweep_id}")
         else:
@@ -398,11 +398,11 @@ def sweep(
 
     except KeyboardInterrupt:
         rprint("\n[yellow]Sweep interrupted by user[/yellow]")
-        store.update_sweep(sweep_db_id, end_time=datetime.utcnow(), status="failed")
+        store.update_sweep(sweep_db_id, end_time=datetime.now(timezone.utc), status="failed")
         raise typer.Exit(1)
     except Exception as e:
         rprint(f"\n[red]Error during sweep: {e}[/red]")
-        store.update_sweep(sweep_db_id, end_time=datetime.utcnow(), status="failed")
+        store.update_sweep(sweep_db_id, end_time=datetime.now(timezone.utc), status="failed")
         raise typer.Exit(1)
 
 

@@ -2,7 +2,7 @@
 
 import subprocess
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -58,7 +58,7 @@ def run_rtl_power_sweep(
     output_file = None
     if output_dir:
         output_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%SZ")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%SZ")
         output_file = output_dir / f"rtl_power_{timestamp}.csv"
 
     try:

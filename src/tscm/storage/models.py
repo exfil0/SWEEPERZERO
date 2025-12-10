@@ -1,6 +1,6 @@
 """SQLAlchemy models for TSCM sweep storage."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import (
@@ -40,8 +40,8 @@ class Sweep(Base):
     gps_lat = Column(Float, nullable=True)
     gps_lon = Column(Float, nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     events = relationship("Event", back_populates="sweep", cascade="all, delete-orphan")
@@ -86,7 +86,7 @@ class Event(Base):
     # Generic fields
     event_metadata = Column(Text, nullable=True)  # JSON string for additional data
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     sweep = relationship("Sweep", back_populates="events")
@@ -113,7 +113,7 @@ class Artifact(Base):
     file_size_bytes = Column(Integer, nullable=True)
     checksum_sha256 = Column(String(64), nullable=True)
     description = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     sweep = relationship("Sweep", back_populates="artifacts")
