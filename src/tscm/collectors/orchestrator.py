@@ -47,14 +47,9 @@ def run_ble_sweep_wrapper(config: TSCMConfig, store: SweepStore, sweep_db_id: in
         return False
 
 
-def run_gsm_sweep(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
+def run_gsm_sweep_wrapper(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
     """
-    Run GSM sweep (stub implementation).
-
-    TODO: Implement GSM scanning using gr-gsm.
-    - Use grgsm_scanner to scan GSM bands
-    - Parse cell tower information
-    - Store GSM events with MCC, MNC, LAC, CID, ARFCN
+    Wrapper for GSM sweep to import the real implementation.
 
     Args:
         config: TSCM configuration
@@ -64,23 +59,12 @@ def run_gsm_sweep(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bo
     Returns:
         True if successful
     """
-    if not config.gsm.enabled:
-        print("GSM collection is disabled in config")
+    try:
+        from tscm.collectors.gsm import run_gsm_sweep
+        return run_gsm_sweep(config, store, sweep_db_id)
+    except ImportError as e:
+        print(f"Failed to import GSM collector: {e}")
         return False
-
-    print("GSM sweep: TODO - Not yet implemented")
-    print(f"  Would use device: {config.gsm.device_string}")
-    print(f"  Bands: {config.gsm.bands}")
-    print(f"  Duration: {config.durations.gsm_duration} seconds")
-
-    # TODO: Implement GSM scanning
-    # 1. Check if grgsm_scanner is available
-    # 2. Run grgsm_scanner with configured bands
-    # 3. Parse output to extract cell information
-    # 4. Store GSM events with MCC, MNC, LAC, CID, ARFCN, power
-    # 5. Store artifact reference to raw scanner output
-
-    return True
 
 
 def run_all_sweeps(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> bool:
@@ -114,7 +98,7 @@ def run_all_sweeps(config: TSCMConfig, store: SweepStore, sweep_db_id: int) -> b
         sweep_tasks.append(("BLE", run_ble_sweep_wrapper, config, store, sweep_db_id))
 
     if config.gsm.enabled:
-        sweep_tasks.append(("GSM", run_gsm_sweep, config, store, sweep_db_id))
+        sweep_tasks.append(("GSM", run_gsm_sweep_wrapper, config, store, sweep_db_id))
 
     if not sweep_tasks:
         print("No sweeps enabled in configuration")
