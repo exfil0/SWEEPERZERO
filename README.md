@@ -1,114 +1,16 @@
-## 0. Scope & Assumptions
-
-* OS: **Ubuntu 22.04 / 24.04 LTS**.
-* Hardware (minimum):
-
-  * bladeRF 2.0 (xA4/xA9/x40) for GSM decode.
-  * HackRF One for fast wideband sweeping.
-  * RTL-SDR for long-run power sweeps.
-  * Ubertooth One for BLE.
-  * Wi-Fi NIC supporting monitor mode (e.g. `wlan0`).
-* You’re comfortable tweaking device strings and basic Python.
-
-### Optional “pro kit” (nice to integrate, but not required)
-
-* **REI MESA 2.0** – 10 kHz–6 GHz spectrum analyzer with SmartBars, Wi-Fi/Bluetooth modes and jammer/interference detection.
-* **REI ANDRE** – broadband near-field detector with histogram displays and signal lists up to 12 GHz.
-* **REI ORION 2.4 HX** – NLJD with digitally modulated transmit, correlated 2nd/3rd harmonics and histogram/spectrum displays.
-* **REI TALAN 3.0** – line analyzer with multimeter, RF broadband detector to 8 GHz, spectrum analyzer to 85 MHz, FDR and built-in NLJD.
-* **REI PSK** (Physical Search Kit) – borescope, wireless inspection camera, IR/UV tools, evidence bags, etc.
-* **REI PMK-8** – speech masking kit with eight voice masking generators and 16 transducers for rapid audio-masking deployment
-
-These augment the RF/GSM/BLE stack; the blueprint focuses on the open-source, SDR-driven core.
-
----
-
-## 1. Directory layout & global config
-
-### 1.1 Folder structure
+## 1. Create base folders
 
 ```bash
 mkdir -p ~/tscm/{bin,config,data,analysis,logs}
 mkdir -p ~/tscm/data/clients
 ```
 
-Data will end up like:
-
-```text
-~/tscm/data/clients/
-  ACME_CORP/
-    HQ/
-      CEO_office/
-        2025-12-09_2030Z/
-          rf_hackrf_low.csv
-          rf_hackrf_mid.csv
-          rf_hackrf_high.csv
-          rf_rtl_power.csv
-          wifi_airodump-01.csv
-          ble_log.txt
-          gsm_scanner.raw
-          gsm_cells.json
-          gps.json
-          notes.txt
-          sweep.log
-      gsm_baseline.json
-      ble_baseline.json
-```
-
-### 1.2 Main config – `~/tscm/config/tscm.conf`
-
-```bash
-# Client identity
-CLIENT_NAME="ACME_CORP"
-BASE_DIR="$HOME/tscm/data/clients"
-
-# Network interfaces
-WIFI_IFACE="wlan0"
-
-# GPS
-GPSD_HOST="127.0.0.1"
-GPSD_PORT="2947"
-ENABLE_GPS=1
-
-# Durations (seconds)
-RF_DURATION=600          # HackRF sweeps
-WIFI_DURATION=900        # Wi-Fi airodump
-BLE_DURATION=900         # BLE ubertooth
-GSM_DURATION=600         # GSM scanner
-
-# HackRF bands: "FREQ_RANGE STEP_MHz OUT_FILE"
-RF_BANDS=(
-  "25M:300M:10M 5M rf_hackrf_low.csv"
-  "300M:1200M:10M 5M rf_hackrf_mid.csv"
-  "1200M:6000M:20M 10M rf_hackrf_high.csv"
-)
-
-# rtl_power (RTL-SDR) long sweep
-ENABLE_RTL_POWER=1
-RTL_POWER_ARGS="-f 50M:1700M:1M -i 10 -e 600"
-
-# GSM (bladeRF + gr-gsm / gr-osmosdr)
-ENABLE_GSM=1
-GSM_DEVICE_STRING="bladerf=0"           # osmosdr device string
-GSM_BANDS="EGSM900,DCS1800"            # bands for grgsm_scanner
-
-# Allowed operators (for rogue scoring) – MCC-MNC list
-# For example: South Africa Vodacom 655-01, MTN 655-10, Cell C 655-07
-GSM_ALLOWED_MCC_MNC="655-01,655-07,655-10"
-
-# BLE logical name for scripts (no system effect)
-BLE_IFACE="ubertooth"
-```
-
-If you work in a different country, adjust `GSM_ALLOWED_MCC_MNC` appropriately.
-
 ---
 
-## 2. Tooling install script
-
-`~/tscm/bin/install_tscm_stack.sh`:
+## 2. Create the install script & run it
 
 ```bash
+cat <<'EOF' > ~/tscm/bin/install_tscm_stack.sh
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -136,10 +38,10 @@ apt install -y \
   bluez bluez-hcidump \
   libusb-1.0-0-dev
 
-# Ubertooth (if available in repo; otherwise build from source)
+# Ubertooth (if available)
 apt install -y ubertooth || true
 
-# GSM stack – gr-gsm (from distro; if too old, build from source separately)
+# GSM stack – gr-gsm
 apt install -y gr-gsm || true
 
 # Python analytics
@@ -149,31 +51,69 @@ pip3 install \
   scipy \
   scikit-learn \
   jinja2
-```
+EOF
 
-Run:
-
-```bash
-sudo chmod +x ~/tscm/bin/install_tscm_stack.sh
+chmod +x ~/tscm/bin/install_tscm_stack.sh
 sudo ~/tscm/bin/install_tscm_stack.sh
 ```
 
-Install bladeRF drivers/FW from Nuand separately, then confirm devices:
+> You still need to install bladeRF drivers/firmware from Nuand separately and confirm `bladeRF-cli -p` works.
+
+---
+
+## 3. Create the global config file
 
 ```bash
-bladeRF-cli -p
-hackrf_info
-rtl_test -t
-ubertooth-util -v
+cat <<'EOF' > ~/tscm/config/tscm.conf
+# Client identity
+CLIENT_NAME="ACME_CORP"
+BASE_DIR="$HOME/tscm/data/clients"
+
+# Network interfaces
+WIFI_IFACE="wlan0"
+
+# GPS
+GPSD_HOST="127.0.0.1"
+GPSD_PORT="2947"
+ENABLE_GPS=1
+
+# Durations (seconds)
+RF_DURATION=600          # HackRF sweeps
+WIFI_DURATION=900        # Wi-Fi airodump
+BLE_DURATION=900         # BLE ubertooth
+GSM_DURATION=600         # GSM scanner
+
+# HackRF RF bands: "FREQ_RANGE STEP_MHz OUT_FILE"
+RF_BANDS=(
+  "25M:300M:10M 5M rf_hackrf_low.csv"
+  "300M:1200M:10M 5M rf_hackrf_mid.csv"
+  "1200M:6000M:20M 10M rf_hackrf_high.csv"
+)
+
+# rtl_power (RTL-SDR) long sweep
+ENABLE_RTL_POWER=1
+RTL_POWER_ARGS="-f 50M:1700M:1M -i 10 -e 600"
+
+# GSM (bladeRF + gr-gsm / gr-osmosdr)
+ENABLE_GSM=1
+GSM_DEVICE_STRING="bladerf=0"           # osmosdr device string
+GSM_BANDS="EGSM900,DCS1800"            # bands for grgsm_scanner
+
+# Allowed operators (for rogue scoring) – MCC-MNC list
+# Example for ZA: Vodacom 655-01, Cell C 655-07, MTN 655-10
+GSM_ALLOWED_MCC_MNC="655-01,655-07,655-10"
+
+# BLE logical name for scripts (no system effect)
+BLE_IFACE="ubertooth"
+EOF
 ```
 
 ---
 
-## 3. Per-room sweep script (RF + Wi-Fi + BLE + GSM)
-
-`~/tscm/bin/run_room_sweep.sh`:
+## 4. Create the main sweep script
 
 ```bash
+cat <<'EOF' > ~/tscm/bin/run_room_sweep.sh
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -258,7 +198,7 @@ if [[ "${ENABLE_GSM:-0}" -eq 1 ]] && command -v "$HOME/tscm/bin/capture_gsm_room
 fi
 
 # --- Notes template ---
-cat >"$OUT_DIR/notes.txt" <<EOF
+cat >"$OUT_DIR/notes.txt" <<EON
 Client:  $CLIENT_NAME
 Site:    $SITE
 Room:    $ROOM
@@ -278,27 +218,23 @@ Physical inspection:
 
 Initial RF/GSM/BLE impressions:
   -
-EOF
+EON
 
 echo "[*] Sweep done for $SITE / $ROOM" | tee -a "$LOG"
 echo "[*] Data at: $OUT_DIR" | tee -a "$LOG"
-```
+EOF
 
-Make executable:
-
-```bash
 chmod +x ~/tscm/bin/run_room_sweep.sh
 ```
 
 ---
 
-## 4. GSM pipeline with rogue-cell scoring (bladeRF + gr-gsm)
+## 5. Create the GSM capture & analysis scripts
 
-### 4.1 GSM capture – `~/tscm/bin/capture_gsm_room.sh`
-
-This uses `grgsm_scanner` with the bladeRF osmosdr device string.
+### 5.1 GSM capture (bladeRF + gr-gsm)
 
 ```bash
+cat <<'EOF' > ~/tscm/bin/capture_gsm_room.sh
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -327,14 +263,12 @@ export GR_GSM_DEVICE_ARGS="$GSM_DEVICE_STRING"
 export GR_GSM_LNA=36
 export GR_GSM_PPM=0
 
-# Capture for a time window; scanner continues cycling bands
 timeout "$DURATION" grgsm_scanner -b "$GSM_BANDS" -p 0 -g 36 \
   2>"$RAW" || true
 
 echo "[*] GSM scanner raw output -> $RAW"
 
-# Parse raw to JSON
-python3 << 'EOF'
+python3 << 'PYEOF'
 import json, re, sys
 from pathlib import Path
 
@@ -342,12 +276,14 @@ out_dir = Path(sys.argv[1])
 raw_path = out_dir / "gsm_scanner.raw"
 text = raw_path.read_text(errors="ignore").splitlines()
 
-# Typical grgsm_scanner lines look like:
-# ARFCN: 123, Freq: 947.4 MHz, CID: 0x1234, LAC: 0x5678, MCC: 655, MNC: 01, Pwr: -70 dBm
 pattern = re.compile(
     r"ARFCN:\s*(\d+),\s*Frequ:\s*([\d\.]+)\s*MHz,\s*CID:\s*(0x[0-9A-Fa-f]+|\d+),\s*LAC:\s*(0x[0-9A-Fa-f]+|\d+),\s*MCC:\s*(\d+),\s*MNC:\s*(\d+).*?Pwr:\s*([-\d]+)\s*dBm",
     re.IGNORECASE
 )
+
+def parse_int(x):
+    x = x.strip()
+    return int(x, 16) if x.lower().startswith("0x") else int(x)
 
 cells = []
 for line in text:
@@ -355,11 +291,6 @@ for line in text:
     if not m:
         continue
     arfcn, freq_mhz, cid, lac, mcc, mnc, pwr = m.groups()
-
-    def parse_int(x):
-        x = x.strip()
-        return int(x, 16) if x.lower().startswith("0x") else int(x)
-
     cells.append({
         "arfcn": int(arfcn),
         "freq_mhz": float(freq_mhz),
@@ -374,21 +305,19 @@ for line in text:
 out = out_dir / "gsm_cells.json"
 out.write_text(json.dumps(cells, indent=2), encoding="utf-8")
 print(f"[+] Parsed {len(cells)} cells -> {out}")
-EOF
+PYEOF
 "$OUT_DIR"
 
 echo "[*] GSM capture finished"
-```
+EOF
 
-Make executable:
-
-```bash
 chmod +x ~/tscm/bin/capture_gsm_room.sh
 ```
 
-### 4.2 GSM baseline – `~/tscm/analysis/gsm_build_baseline.py`
+### 5.2 GSM baseline builder
 
-```python
+```bash
+cat <<'EOF' > ~/tscm/analysis/gsm_build_baseline.py
 #!/usr/bin/env python3
 import argparse
 from pathlib import Path
@@ -415,7 +344,6 @@ def main():
     for col in KEY:
         df[col] = df[col].astype(int)
 
-    # Aggregate statistics per cell identity
     baseline = df.groupby(KEY, as_index=False).agg(
         mean_pwr_dbm=("pwr_dbm", "mean"),
         min_pwr_dbm=("pwr_dbm", "min"),
@@ -428,48 +356,15 @@ def main():
 
 if __name__ == "__main__":
     main()
+EOF
+
+chmod +x ~/tscm/analysis/gsm_build_baseline.py
 ```
 
-Usage (once per room/site):
+### 5.3 GSM comparison + rogue scoring
 
 ```bash
-python3 ~/tscm/analysis/gsm_build_baseline.py \
-  ~/tscm/data/clients/ACME_CORP/HQ/CEO_office/2025-12-09_2030Z \
-  ~/tscm/data/clients/ACME_CORP/HQ/CEO_office/gsm_baseline.json
-```
-
-### 4.3 GSM comparison + **rogue scoring** – `~/tscm/analysis/gsm_compare_to_baseline.py`
-
-This script:
-
-* Loads baseline and current GSM scan.
-* Computes classic anomalies:
-
-  * new cells
-  * foreign MCC/MNC
-  * big power deviations.
-* Computes a **score 0-100** per cell for “rogue-ness”.
-
-Heuristics:
-
-* **new_cell** (not in baseline): +30
-* **foreign_mcc_mnc** (not in allowed list): +50
-* **power_delta**:
-
-  * |Δ| ≥ 15 dB: +20
-  * |Δ| ≥ 8 dB: +10
-* **isolated** (only ≤2 cells for that MCC/MNC in current scan): +15
-* **very_strong** (pwr_dbm > −55 dBm): +10
-
-Score is clipped to [0, 100].
-
-Interpretation:
-
-* `score >= 60` → **likely rogue / hostile** (or at least warranting serious scrutiny).
-* `40 ≤ score < 60` → suspicious but possibly explainable.
-* `< 40` → probably normal variations.
-
-```python
+cat <<'EOF' > ~/tscm/analysis/gsm_compare_to_baseline.py
 #!/usr/bin/env python3
 import argparse
 import json
@@ -482,9 +377,6 @@ import pandas as pd
 KEY = ["mcc", "mnc", "lac", "cid", "arfcn"]
 
 def parse_allowed_pairs(s: str) -> Set[Tuple[int, int]]:
-    """
-    Parse '655-01,655-07' into {(655,1),(655,7)}.
-    """
     pairs = set()
     if not s:
         return pairs
@@ -503,10 +395,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("baseline_json", type=Path)
     ap.add_argument("current_dir", type=Path)
-    ap.add_argument("--pwr_threshold", type=float, default=8.0,
-                    help="dB threshold for power anomaly consideration")
-    ap.add_argument("--allowed-mcc-mnc", type=str, default="",
-                    help="Comma-separated MCC-MNC pairs (e.g. '655-01,655-07')")
+    ap.add_argument("--pwr_threshold", type=float, default=8.0)
+    ap.add_argument("--allowed-mcc-mnc", type=str, default="")
     args = ap.parse_args()
 
     baseline = pd.read_json(args.baseline_json)
@@ -520,31 +410,25 @@ def main():
         baseline[col] = baseline[col].astype(int)
         current[col] = current[col].astype(int)
 
-    # Allowed MCC/MNC pairs:
     env_allowed = os.environ.get("GSM_ALLOWED_MCC_MNC", "")
     allowed_str = args.allowed_mcc_mnc or env_allowed
     if allowed_str:
         allowed_pairs = parse_allowed_pairs(allowed_str)
     else:
-        # if none provided, allow whatever we saw in baseline
         allowed_pairs = set(zip(baseline["mcc"], baseline["mnc"]))
 
-    # Merge baseline stats into current cells
     merged = current.merge(baseline, on=KEY, how="left", suffixes=("", "_base"))
 
-    # Precompute per-MCC/MNC cell counts in current scan
     mcc_mnc_counts = merged.groupby(["mcc", "mnc"]).size().to_dict()
 
     scores = []
-    for idx, row in merged.iterrows():
+    for _, row in merged.iterrows():
         mcc = int(row["mcc"])
         mnc = int(row["mnc"])
         lac = int(row["lac"])
         cid = int(row["cid"])
         arfcn = int(row["arfcn"])
         pwr = float(row["pwr_dbm"])
-
-        key = (mcc, mnc, lac, cid, arfcn)
 
         new_cell = pd.isna(row.get("mean_pwr_dbm"))
         foreign_pair = (mcc, mnc) not in allowed_pairs
@@ -556,7 +440,7 @@ def main():
 
         iso_count = mcc_mnc_counts.get((mcc, mnc), 0)
         isolated = iso_count <= 2
-        very_strong = pwr > -55.0  # adjustable
+        very_strong = pwr > -55.0
 
         score = 0.0
 
@@ -606,7 +490,6 @@ def main():
     out_file = args.current_dir / "gsm_scored_cells.csv"
     out_df.to_csv(out_file, index=False)
 
-    # convenience filtered views
     out_df[out_df["label"] == "likely_rogue"].to_csv(
         args.current_dir / "gsm_likely_rogue.csv", index=False
     )
@@ -621,38 +504,19 @@ def main():
 
 if __name__ == "__main__":
     main()
+EOF
+
+chmod +x ~/tscm/analysis/gsm_compare_to_baseline.py
 ```
-
-Usage for a new sweep:
-
-```bash
-# ENV can carry allowed operators if you don't pass CLI flag
-export GSM_ALLOWED_MCC_MNC="655-01,655-07,655-10"
-
-python3 ~/tscm/analysis/gsm_compare_to_baseline.py \
-  ~/tscm/data/clients/ACME_CORP/HQ/CEO_office/gsm_baseline.json \
-  ~/tscm/data/clients/ACME_CORP/HQ/CEO_office/2025-12-11_0830Z \
-  --pwr_threshold 8
-```
-
-You then look at:
-
-* `gsm_likely_rogue.csv` – top priority follow-up.
-* `gsm_suspicious.csv` – might be explained by network changes; cross-check with operator.
-
-For each “likely_rogue” row, you can:
-
-* Use MESA/ANDRE + directional antenna to physically hunt the transmitter.
-* Compare ARFCN to local operator allocations.
-* Correlate with time, presence of target, etc.
 
 ---
 
-## 5. BLE tracker correlation with Ubertooth
+## 6. Create the BLE scripts
 
-### 5.1 BLE capture – `~/tscm/bin/capture_ble_room.sh`
+### 6.1 BLE capture
 
 ```bash
+cat <<'EOF' > ~/tscm/bin/capture_ble_room.sh
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -673,22 +537,19 @@ fi
 
 echo "[*] BLE capture via Ubertooth..." >&2
 
-# -f: follow advertising; -s full data
 timeout "$DURATION" stdbuf -oL ubertooth-btle -f -s \
   | awk '{ print strftime("%Y-%m-%dT%H:%M:%SZ"), $0 }' > "$BLE_LOG" 2>/dev/null || true
 
 echo "[*] BLE log -> $BLE_LOG" >&2
-```
+EOF
 
-Make executable:
-
-```bash
 chmod +x ~/tscm/bin/capture_ble_room.sh
 ```
 
-### 5.2 BLE baseline per room – `~/tscm/analysis/ble_build_baseline.py`
+### 6.2 BLE baseline
 
-```python
+```bash
+cat <<'EOF' > ~/tscm/analysis/ble_build_baseline.py
 #!/usr/bin/env python3
 import argparse
 from pathlib import Path
@@ -732,24 +593,19 @@ def main():
 
 if __name__ == "__main__":
     main()
+EOF
+
+chmod +x ~/tscm/analysis/ble_build_baseline.py
 ```
 
-Usage:
+### 6.3 BLE compare & corpus
 
 ```bash
-python3 ~/tscm/analysis/ble_build_baseline.py \
-  ~/tscm/data/clients/ACME_CORP/HQ/CEO_office/2025-12-09_2030Z/ble_log.txt \
-  ~/tscm/data/clients/ACME_CORP/HQ/CEO_office/ble_baseline.json
-```
-
-### 5.3 BLE compare + per-sweep corpus – `~/tscm/analysis/ble_compare_and_correlate.py`
-
-```python
+cat <<'EOF' > ~/tscm/analysis/ble_compare_and_correlate.py
 #!/usr/bin/env python3
 import argparse
 from pathlib import Path
 import re
-import json
 import pandas as pd
 
 LINE_RE = re.compile(
@@ -808,27 +664,21 @@ def main():
     print(f"[+] New vs baseline: {len(new_macs)}")
     print(f"[+] Missing vs baseline: {len(missing_macs)}")
 
-    # Append to corpus (cross-room correlation)
     corpus_file = out_dir.parent / "ble_corpus.csv"
     cur_df.to_csv(corpus_file, mode="a", header=not corpus_file.exists(), index=False)
     print(f"[+] Appended {len(cur_df)} rows to corpus {corpus_file}")
 
 if __name__ == "__main__":
     main()
+EOF
+
+chmod +x ~/tscm/analysis/ble_compare_and_correlate.py
 ```
 
-Usage per sweep:
+### 6.4 BLE tracker candidates
 
 ```bash
-python3 ~/tscm/analysis/ble_compare_and_correlate.py \
-  ~/tscm/data/clients/ACME_CORP/HQ/CEO_office/ble_baseline.json \
-  ~/tscm/data/clients/ACME_CORP/HQ/CEO_office/2025-12-11_0830Z/ble_log.txt \
-  --site HQ --room CEO_office --sweep_id 2025-12-11_0830Z
-```
-
-### 5.4 Cross-room tracker correlation – `~/tscm/analysis/ble_tracker_candidates.py`
-
-```python
+cat <<'EOF' > ~/tscm/analysis/ble_tracker_candidates.py
 #!/usr/bin/env python3
 import argparse
 from pathlib import Path
@@ -864,43 +714,17 @@ def main():
 
 if __name__ == "__main__":
     main()
+EOF
+
+chmod +x ~/tscm/analysis/ble_tracker_candidates.py
 ```
 
 ---
 
-## 6. Continuous monitoring wrapper (optional)
-
-`~/tscm/bin/run_continuous_monitor.sh`:
+## 7. Sweep summary script
 
 ```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-if [[ $# -lt 2 ]]; then
-  echo "Usage: $0 <site> <room>" >&2
-  exit 1
-fi
-
-SITE="$1"
-ROOM="$2"
-
-INTERVAL="${INTERVAL_SECONDS:-3600}"
-
-while true; do
-  echo "[*] $(date -u) – sweep for $SITE / $ROOM"
-  "$HOME/tscm/bin/run_room_sweep.sh" "$SITE" "$ROOM" || echo "[!] Sweep error"
-  echo "[*] Sleeping for $INTERVAL seconds..."
-  sleep "$INTERVAL"
-done
-```
-
----
-
-## 7. Sweep summary for reporting
-
-`~/tscm/analysis/build_sweep_summary.py`:
-
-```python
+cat <<'EOF' > ~/tscm/analysis/build_sweep_summary.py
 #!/usr/bin/env python3
 import argparse
 from pathlib import Path
@@ -944,53 +768,93 @@ def main():
 
 if __name__ == "__main__":
     main()
+EOF
+
+chmod +x ~/tscm/analysis/build_sweep_summary.py
 ```
 
 ---
 
-## 8. How to actually use this end-to-end
-
-### 8.1 Baseline day (trusted environment)
-
-1. Run a full sweep:
+## 8. Optional: Continuous monitor script
 
 ```bash
-CLIENT_NAME="ACME_CORP" TSCM_CONF="$HOME/tscm/config/tscm.conf" \
-  ~/tscm/bin/run_room_sweep.sh HQ CEO_office
+cat <<'EOF' > ~/tscm/bin/run_continuous_monitor.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -lt 2 ]]; then
+  echo "Usage: $0 <site> <room>" >&2
+  exit 1
+fi
+
+SITE="$1"
+ROOM="$2"
+
+INTERVAL="${INTERVAL_SECONDS:-3600}"
+
+while true; do
+  echo "[*] $(date -u) – sweep for $SITE / $ROOM"
+  "$HOME/tscm/bin/run_room_sweep.sh" "$SITE" "$ROOM" || echo "[!] Sweep error"
+  echo "[*] Sleeping for $INTERVAL seconds..."
+  sleep "$INTERVAL"
+done
+EOF
+
+chmod +x ~/tscm/bin/run_continuous_monitor.sh
 ```
 
-Assume it created:
+---
+
+## 9. How to run it
+
+### 9.1 Baseline sweep (trusted day)
+
+Set env and run sweep:
 
 ```bash
+export TSCM_CONF="$HOME/tscm/config/tscm.conf"
+export CLIENT_NAME="ACME_CORP"
+
+~/tscm/bin/run_room_sweep.sh HQ CEO_office
+```
+
+Find the created directory:
+
+```bash
+ls -R ~/tscm/data/clients/ACME_CORP/HQ/CEO_office
+# e.g. 2025-12-09_2030Z
 BASE_DIR=~/tscm/data/clients/ACME_CORP/HQ/CEO_office/2025-12-09_2030Z
 ```
 
-2. Build GSM baseline:
+Build GSM baseline:
 
 ```bash
 python3 ~/tscm/analysis/gsm_build_baseline.py \
   "$BASE_DIR" "$BASE_DIR/../gsm_baseline.json"
 ```
 
-3. Build BLE baseline:
+Build BLE baseline:
 
 ```bash
 python3 ~/tscm/analysis/ble_build_baseline.py \
   "$BASE_DIR/ble_log.txt" "$BASE_DIR/../ble_baseline.json"
 ```
 
-### 8.2 Investigation day
+### 9.2 Later investigation sweep
 
-1. Another sweep:
+Run a new sweep:
+
+```bash
+~/tscm/bin/run_room_sweep.sh HQ CEO_office
+```
+
+Assume it created `CUR_DIR`:
 
 ```bash
 CUR_DIR=~/tscm/data/clients/ACME_CORP/HQ/CEO_office/2025-12-11_0830Z
-
-TSCM_CONF="$HOME/tscm/config/tscm.conf" \
-  ~/tscm/bin/run_room_sweep.sh HQ CEO_office
 ```
 
-2. GSM comparison + scoring:
+GSM comparison & rogue scoring:
 
 ```bash
 export GSM_ALLOWED_MCC_MNC="655-01,655-07,655-10"
@@ -1001,12 +865,7 @@ python3 ~/tscm/analysis/gsm_compare_to_baseline.py \
   --pwr_threshold 8
 ```
 
-Check:
-
-* `gsm_likely_rogue.csv` – cells that scored high.
-* `gsm_suspicious.csv` – cells that need context.
-
-3. BLE compare, update corpus:
+BLE comparison & corpus update:
 
 ```bash
 python3 ~/tscm/analysis/ble_compare_and_correlate.py \
@@ -1015,20 +874,16 @@ python3 ~/tscm/analysis/ble_compare_and_correlate.py \
   --site HQ --room CEO_office --sweep_id 2025-12-11_0830Z
 ```
 
-4. Build per-sweep summary:
+Build summary JSON:
 
 ```bash
 python3 ~/tscm/analysis/build_sweep_summary.py "$CUR_DIR"
 ```
 
-### 8.3 Cross-room tracker hunt
-
-After you have several sweeps from different rooms (each `ble_compare_and_correlate.py` appended to `ble_corpus.csv` in the parent folder):
+### 9.3 Cross-room BLE tracker hunt (after multiple sweeps across rooms)
 
 ```bash
 python3 ~/tscm/analysis/ble_tracker_candidates.py \
   ~/tscm/data/clients/ACME_CORP/HQ/ble_corpus.csv \
   --min_rooms 2 --min_sweeps 3 --min_hits 10
 ```
-
-Review `ble_tracker_candidates.csv` for MACs that behave like trackers – appearing in multiple rooms across multiple sweeps with enough hits.
