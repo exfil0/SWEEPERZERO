@@ -79,39 +79,40 @@ def run_rtl_power_sweep(
         if output_file:
             file_handle = open(output_file, "w")
 
-        # Process output line by line
-        for line in process.stdout:
-            # Save to file if requested
+        try:
+            # Process output line by line
+            for line in process.stdout:
+                # Save to file if requested
+                if file_handle:
+                    file_handle.write(line)
+
+                # Parse line
+                event = parser.parse_line(line)
+                if event is None:
+                    continue
+
+                # Convert to database events (one per frequency bin)
+                for freq_hz, power_db in event.freq_bins:
+                    events_batch.append({
+                        "event_type": "rf",
+                        "timestamp": event.timestamp,
+                        "freq_hz": freq_hz,
+                        "power_db": power_db,
+                        "bandwidth_hz": event.freq_step_hz,
+                    })
+
+                # Bulk insert when batch is full
+                if len(events_batch) >= batch_size:
+                    store.add_events_bulk(sweep_db_id, events_batch)
+                    print(f"Stored {len(events_batch)} RF events")
+                    events_batch = []
+        finally:
+            # Close file
             if file_handle:
-                file_handle.write(line)
+                file_handle.close()
 
-            # Parse line
-            event = parser.parse_line(line)
-            if event is None:
-                continue
-
-            # Convert to database events (one per frequency bin)
-            for freq_hz, power_db in event.freq_bins:
-                events_batch.append({
-                    "event_type": "rf",
-                    "timestamp": event.timestamp,
-                    "freq_hz": freq_hz,
-                    "power_db": power_db,
-                    "bandwidth_hz": event.freq_step_hz,
-                })
-
-            # Bulk insert when batch is full
-            if len(events_batch) >= batch_size:
-                store.add_events_bulk(sweep_db_id, events_batch)
-                print(f"Stored {len(events_batch)} RF events")
-                events_batch = []
-
-        # Close file
-        if file_handle:
-            file_handle.close()
-
-        # Wait for process to complete
-        process.wait()
+            # Wait for process to complete
+            process.wait()
 
         # Store remaining events
         if events_batch:
@@ -140,9 +141,6 @@ def run_rtl_power_sweep(
         return False
     except KeyboardInterrupt:
         print("\nRTL-SDR sweep interrupted")
-        if process:
-            process.terminate()
-            process.wait()
         return False
     except Exception as e:
         print(f"Error during RTL-SDR sweep: {e}")

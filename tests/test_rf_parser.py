@@ -121,7 +121,9 @@ class TestRTLPowerParser:
         assert event is not None
         assert event.freq_low_hz == 433e6
         assert len(event.power_readings_db) == 10
-        assert event.mean_power_db == pytest.approx(-42.19, rel=0.01)
+        # Calculate expected mean: sum of values / count
+        expected_mean = sum([-42.1, -41.8, -43.2, -42.5, -41.9, -42.0, -41.7, -42.8, -42.3, -41.6]) / 10
+        assert event.mean_power_db == pytest.approx(expected_mean, rel=0.01)
 
     def test_parse_empty_line(self, parser):
         """Test parsing empty line."""

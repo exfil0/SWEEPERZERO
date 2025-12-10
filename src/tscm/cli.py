@@ -336,7 +336,7 @@ def sweep(
     # Initialize storage
     try:
         store = SweepStore(config.storage.database_path, config.storage.enable_wal)
-    except Exception as e:
+    except (OSError, IOError) as e:
         rprint(f"[red]Error initializing storage: {e}[/red]")
         raise typer.Exit(1)
 

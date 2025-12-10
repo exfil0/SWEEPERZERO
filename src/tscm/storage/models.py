@@ -18,6 +18,11 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
+def utcnow():
+    """Return current UTC time for database defaults."""
+    return datetime.now(timezone.utc)
+
+
 class Base(DeclarativeBase):
     """Base class for all models."""
 
@@ -40,8 +45,8 @@ class Sweep(Base):
     gps_lat = Column(Float, nullable=True)
     gps_lon = Column(Float, nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=utcnow, nullable=False)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     # Relationships
     events = relationship("Event", back_populates="sweep", cascade="all, delete-orphan")
@@ -86,7 +91,7 @@ class Event(Base):
     # Generic fields
     event_metadata = Column(Text, nullable=True)  # JSON string for additional data
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
 
     # Relationships
     sweep = relationship("Sweep", back_populates="events")
@@ -113,7 +118,7 @@ class Artifact(Base):
     file_size_bytes = Column(Integer, nullable=True)
     checksum_sha256 = Column(String(64), nullable=True)
     description = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
 
     # Relationships
     sweep = relationship("Sweep", back_populates="artifacts")
