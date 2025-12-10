@@ -3,7 +3,6 @@
 Simple Flask-based dashboard for viewing sweep results.
 """
 
-import json
 from pathlib import Path
 from typing import Optional
 
