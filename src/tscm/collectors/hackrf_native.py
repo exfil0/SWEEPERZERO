@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from tscm.collectors.rf_parser import RFEvent, RTLPowerParser
+from tscm.collectors.rf_parser import RTLPowerParser
 from tscm.config import TSCMConfig
 from tscm.storage.store import SweepStore
 
