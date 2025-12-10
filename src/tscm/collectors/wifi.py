@@ -57,7 +57,6 @@ def run_wifi_sweep(
     capture_prefix = output_dir / f"wifi_capture_{timestamp}"
 
     monitor_interface = None
-    original_interface = interface
 
     try:
         # Enable monitor mode
