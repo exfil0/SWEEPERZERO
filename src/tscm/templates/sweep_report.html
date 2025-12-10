@@ -356,7 +356,7 @@
                 html += '<tr>';
                 html += `<td><span class="anomaly-score ${scoreClass}">${anomaly.score.toFixed(2)}</span></td>`;
                 html += `<td><span class="badge badge-warning">${anomaly.kind}</span></td>`;
-                html += `<td>${anomaly.metadata?.details || 'N/A'}</td>`;
+                html += `<td>${escapeHtml(anomaly.metadata?.details || 'N/A')}</td>`;
                 html += `<td>${formatDateTime(anomaly.created_at)}</td>`;
                 html += '</tr>';
             }
