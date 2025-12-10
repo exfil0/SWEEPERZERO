@@ -45,7 +45,7 @@ def run_wifi_sweep(
 
     # Check if tools are available
     if not shutil.which("airmon-ng"):
-        print("Error: airmon-ng not found. Install with: apt install aircrack-ng")
+        print("Error: airmon-ng not found. Please install the aircrack-ng suite for your operating system.")
         return False
 
     # Prepare output directory
