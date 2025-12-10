@@ -249,8 +249,8 @@
     </div>
 
     <script>
-        // This template expects sweep data to be injected via {{SWEEP_DATA}}
-        const sweepData = {{SWEEP_DATA}};
+        // This template expects sweep data to be injected via sweep_data context variable
+        const sweepData = {{ sweep_data|tojson }};
         
         function formatDateTime(dateStr) {
             if (!dateStr) return 'N/A';
