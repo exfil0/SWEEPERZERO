@@ -84,7 +84,7 @@ class Event(Base):
     arfcn = Column(Integer, nullable=True)
 
     # Generic fields
-    metadata = Column(Text, nullable=True)  # JSON string for additional data
+    event_metadata = Column(Text, nullable=True)  # JSON string for additional data
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

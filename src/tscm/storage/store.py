@@ -170,7 +170,7 @@ class SweepStore:
                 lac=lac,
                 cid=cid,
                 arfcn=arfcn,
-                metadata=json.dumps(metadata) if metadata else None,
+                event_metadata=json.dumps(metadata) if metadata else None,
             )
             session.add(event)
             session.commit()
@@ -194,7 +194,7 @@ class SweepStore:
                 metadata = event_data.pop("metadata", None)
                 event = Event(
                     sweep_id=sweep_db_id,
-                    metadata=json.dumps(metadata) if metadata else None,
+                    event_metadata=json.dumps(metadata) if metadata else None,
                     **event_data,
                 )
                 event_objects.append(event)
@@ -323,7 +323,7 @@ class SweepStore:
                     "power_db": e.power_db,
                     "mac_address": e.mac_address,
                     "ssid": e.ssid,
-                    "metadata": json.loads(e.metadata) if e.metadata else None,
+                    "metadata": json.loads(e.event_metadata) if e.event_metadata else None,
                 }
                 for e in events
             ]

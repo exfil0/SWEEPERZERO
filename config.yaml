@@ -1,0 +1,47 @@
+client_name: default_client
+base_dir: /home/runner/.tscm/data/clients
+gps:
+  enable_gps: true
+  gpsd_host: 127.0.0.1
+  gpsd_port: 2947
+durations:
+  rf_duration: 600
+  wifi_duration: 900
+  ble_duration: 900
+  gsm_duration: 600
+hackrf:
+  enabled: true
+  bands:
+  - freq_start_mhz: 25.0
+    freq_end_mhz: 300.0
+    step_mhz: 5.0
+    label: rf_hackrf_low
+  - freq_start_mhz: 300.0
+    freq_end_mhz: 1200.0
+    step_mhz: 5.0
+    label: rf_hackrf_mid
+  - freq_start_mhz: 1200.0
+    freq_end_mhz: 6000.0
+    step_mhz: 10.0
+    label: rf_hackrf_high
+rtl_sdr:
+  enabled: true
+  freq_start_mhz: 50
+  freq_end_mhz: 1700
+  bin_size_hz: 1000000.0
+  interval_seconds: 10
+wifi:
+  enabled: true
+  interface: wlan0
+ble:
+  enabled: true
+  interface: ubertooth
+gsm:
+  enabled: false
+  device_string: bladerf=0
+  bands: EGSM900,DCS1800
+  allowed_mcc_mnc: []
+storage:
+  database_path: /home/runner/.tscm/data/sweeps.db
+  enable_wal: true
+parallel_sweeps: true

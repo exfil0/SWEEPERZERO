@@ -61,9 +61,10 @@ class RTLPowerParser:
 
     # Regex to match rtl_power CSV lines
     # Format: date, time, Hz low, Hz high, Hz step, samples, dB, dB, ...
+    # Supports scientific notation (e.g., 5e7, 5.1e7)
     LINE_PATTERN = re.compile(
         r"^(\d{4}-\d{2}-\d{2}),\s*(\d{2}:\d{2}:\d{2}),\s*"
-        r"(\d+(?:\.\d+)?),\s*(\d+(?:\.\d+)?),\s*(\d+(?:\.\d+)?),\s*"
+        r"(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?),\s*(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?),\s*(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?),\s*"
         r"(\d+),\s*(.+)$"
     )
 
