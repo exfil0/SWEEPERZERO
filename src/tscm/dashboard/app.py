@@ -42,7 +42,11 @@ def create_app(config_path: Optional[Path] = None):
         client = request.args.get("client")
         site = request.args.get("site")
         room = request.args.get("room")
-        limit = int(request.args.get("limit", 50))
+        try:
+            limit = int(request.args.get("limit", 50))
+            limit = min(max(limit, 1), 1000)  # Clamp between 1 and 1000
+        except (ValueError, TypeError):
+            limit = 50
 
         sweeps = store.get_sweeps(
             client_name=client,
