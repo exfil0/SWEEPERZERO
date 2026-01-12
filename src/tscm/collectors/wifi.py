@@ -1,6 +1,5 @@
 """Wi-Fi monitoring collector using aircrack-ng suite."""
 
-import csv
 import re
 import shutil
 import subprocess
